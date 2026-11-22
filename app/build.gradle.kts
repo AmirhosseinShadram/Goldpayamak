@@ -15,8 +15,8 @@ android {
         applicationId = "ir.goldpayamak.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
     }
 
     // کلید امضای ثابت: اگر هر بار کلید جدید ساخته شود، اندروید اجازهٔ بروزرسانی روی نسخهٔ قبلی را نمی‌دهد

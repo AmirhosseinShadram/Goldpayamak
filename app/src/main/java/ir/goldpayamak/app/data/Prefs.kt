@@ -11,11 +11,11 @@ import javax.crypto.spec.PBEKeySpec
 class Prefs(ctx: Context) {
     private val sp = ctx.applicationContext.getSharedPreferences("gp", Context.MODE_PRIVATE)
 
-    val isSetUp: Boolean get() = sp.contains("hash")
+    /** نسخهٔ قبلی نام‌کاربری/رمز داشت؛ کلید جدید جدا نگه داشته می‌شود تا نصب قدیمی دوباره کد بگیرد ولی داده‌ها بماند. */
+    val isSetUp: Boolean get() = sp.contains("code_hash")
     var displayName: String
         get() = sp.getString("display", "") ?: ""
         set(v) = sp.edit().putString("display", v.trim()).apply()
-    val username: String get() = sp.getString("user", "") ?: ""
 
     /** subscriptionId سیم‌کارت انتخابی؛ -1 یعنی پیش‌فرض سیستم */
     var subId: Int
@@ -26,23 +26,22 @@ class Prefs(ctx: Context) {
         get() = sp.getInt("delay", 3)
         set(v) = sp.edit().putInt("delay", v.coerceIn(1, 60)).apply()
 
-    fun setCredentials(user: String, password: String) {
+    /** کد ورود ۱۲ رقمی؛ فقط هش PBKDF2 با salt ذخیره می‌شود. */
+    fun setCode(code: String) {
         val salt = ByteArray(16).also { SecureRandom().nextBytes(it) }
         sp.edit()
-            .putString("user", user.trim())
-            .putString("salt", Base64.encodeToString(salt, Base64.NO_WRAP))
-            .putString("hash", Base64.encodeToString(hash(password, salt), Base64.NO_WRAP))
+            .putString("code_salt", Base64.encodeToString(salt, Base64.NO_WRAP))
+            .putString("code_hash", Base64.encodeToString(hash(code, salt), Base64.NO_WRAP))
             .apply()
     }
 
-    fun check(user: String, password: String): Boolean {
-        val salt = Base64.decode(sp.getString("salt", "") ?: return false, Base64.NO_WRAP)
-        val stored = Base64.decode(sp.getString("hash", "") ?: return false, Base64.NO_WRAP)
-        val ok = MessageDigest.isEqual(hash(password, salt), stored)
-        return ok && user.trim() == username
+    fun checkCode(code: String): Boolean {
+        val salt = Base64.decode(sp.getString("code_salt", "") ?: return false, Base64.NO_WRAP)
+        val stored = Base64.decode(sp.getString("code_hash", "") ?: return false, Base64.NO_WRAP)
+        return MessageDigest.isEqual(hash(code, salt), stored)
     }
 
-    private fun hash(password: String, salt: ByteArray): ByteArray =
+    private fun hash(code: String, salt: ByteArray): ByteArray =
         SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-            .generateSecret(PBEKeySpec(password.toCharArray(), salt, 120_000, 256)).encoded
+            .generateSecret(PBEKeySpec(code.toCharArray(), salt, 120_000, 256)).encoded
 }

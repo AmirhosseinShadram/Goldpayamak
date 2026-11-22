@@ -44,17 +44,25 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun setup(name: String, user: String, pass: String) {
+    fun setup(name: String, code: String) {
         prefs.displayName = name
-        prefs.setCredentials(user, pass)
+        prefs.setCode(code)
         displayName = prefs.displayName
         isSetUp = true
         unlocked = true
     }
 
-    fun login(user: String, pass: String): Boolean {
-        val ok = prefs.check(user, pass)
-        if (ok) unlocked = true
+    private var failedAttempts = 0
+    private var lockedUntil = 0L
+
+    /** ثانیه‌های باقی‌ماندهٔ قفل پس از تلاش‌های ناموفق (۰ یعنی آزاد) */
+    fun lockoutSeconds(): Int = ((lockedUntil - System.currentTimeMillis()) / 1000).toInt().coerceAtLeast(0)
+
+    fun login(code: String): Boolean {
+        if (lockoutSeconds() > 0) return false
+        val ok = prefs.checkCode(code)
+        if (ok) { failedAttempts = 0; unlocked = true }
+        else if (++failedAttempts % 5 == 0) lockedUntil = System.currentTimeMillis() + 30_000L
         return ok
     }
 
