@@ -145,8 +145,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
 fun kindLabel(k: String) = when (k) {
     "ORIGINAL" -> "اصلی"
-    "CORRECTION" -> "اصلاحیه ❗❗"
-    "CANCEL" -> "کنسلی ❌❌"
+    "CORRECTION" -> "اصلاحیه"
+    "CANCEL" -> "کنسلی"
     else -> k
 }
 
@@ -158,8 +158,8 @@ fun statusLabel(s: String) = when (s) {
     Status.FAILED -> "ناموفق"
     Status.SELF -> "ثبت (طرف ۲، ارسال نمی‌شود)"
     Status.REQ_ACTIVE -> "فعال"
-    Status.REQ_SUPERSEDED -> "اصلاح شده ❗❗"
-    Status.REQ_CANCELLED -> "کنسل شده ❌❌"
+    Status.REQ_SUPERSEDED -> "اصلاح شده"
+    Status.REQ_CANCELLED -> "کنسل شده"
     Status.REQ_RECORD -> "ثبت شد"
     else -> s
 }

@@ -13,16 +13,16 @@ fun groupReport(requests: List<RequestEntity>, messages: List<MessageEntity>): L
 
 /** برچسب وضعیت خود درخواست */
 fun requestStateLabel(r: RequestEntity): String = when {
-    r.status == Status.REQ_SUPERSEDED -> "اصلاح شده ❗❗"
-    r.status == Status.REQ_CANCELLED -> "کنسل شده ❌❌"
-    r.kind == "CORRECTION" -> "اصلاحیه ❗❗"
-    r.kind == "CANCEL" -> "کنسلی ❌❌"
+    r.status == Status.REQ_SUPERSEDED -> "اصلاح شده"
+    r.status == Status.REQ_CANCELLED -> "کنسل شده"
+    r.kind == "CORRECTION" -> "اصلاحیه"
+    r.kind == "CANCEL" -> "کنسلی"
     else -> "فعال"
 }
 
 /** برچسب روی پیامک هر طرف وقتی نسخهٔ بعدی (اصلاحیه/کنسلی) آمده باشد */
 fun supersededTag(r: RequestEntity): String? = when (r.status) {
-    Status.REQ_SUPERSEDED -> "اصلاح شده ❗❗"
-    Status.REQ_CANCELLED -> "کنسل شده ❌❌"
+    Status.REQ_SUPERSEDED -> "اصلاح شده"
+    Status.REQ_CANCELLED -> "کنسل شده"
     else -> null
 }

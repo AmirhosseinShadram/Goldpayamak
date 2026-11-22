@@ -103,7 +103,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (parentId != null) {
-            Text("اصلاحیه با پیشوند «اصلاحیه ❗❗» برای گیرنده فرستاده می‌شود. اگر گیرنده را عوض کنید، گیرندهٔ قبلی پیام «کنسلی ❌❌» می‌گیرد.", style = MaterialTheme.typography.bodySmall)
+            Text("اصلاحیه با پیشوند «اصلاحیه» برای گیرنده فرستاده می‌شود. اگر گیرنده را عوض کنید، گیرندهٔ قبلی پیام «کنسلی» می‌گیرد.", style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(note, { note = it }, label = { Text("توضیحات اصلاحیه (در پیامک هم می‌رود)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -134,7 +134,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         plan?.forEach { p ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${p.party.name}  ${p.party.phone}" + if (p.kind == Kind.CANCEL) "  [کنسلی ❌❌]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه ❗❗]" else "",
+                    Text("${p.party.name}  ${p.party.phone}" + if (p.kind == Kind.CANCEL) "  [کنسلی]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه]" else "",
                         style = MaterialTheme.typography.labelLarge)
                     Text(p.text, style = MaterialTheme.typography.bodyMedium)
                 }

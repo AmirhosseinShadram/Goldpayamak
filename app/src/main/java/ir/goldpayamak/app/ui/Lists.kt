@@ -35,10 +35,10 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
-                        Text((if (r.type == "GOLD") "طلایی • " else "حواله • ") + requestStateLabel(r), color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
+                        Text((if (r.type == "GOLD") "طلایی • " else "حواله • ") + requestStateLabel(r), color = requestColor(r), style = MaterialTheme.typography.labelMedium)
                     }
                     // متن پیام طرف ۲ (خود کاربر)؛ با زدن روی آن می‌شود اصلاح یا کنسل کرد
-                    Text(selfByReq[r.id]?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
+                    Text(plain(selfByReq[r.id]?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -60,20 +60,36 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
     val busy = recipients.any { it.status == Status.PENDING || it.status == Status.SENDING }
     val tag = supersededTag(r)
 
+    val next = children.lastOrNull() // نسخهٔ بعدی (اصلاحیه یا کنسلی)
+    val red = MaterialTheme.colorScheme.error
+
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
             Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
-                        Text(requestStateLabel(r), color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
+                        Text(requestStateLabel(r), color = requestColor(r), style = MaterialTheme.typography.titleSmall)
                     }
-                    Text(self?.text ?: "—", style = MaterialTheme.typography.titleSmall)
+                    Text(plain(self?.text ?: "—"), style = MaterialTheme.typography.titleMedium)
                     if (r.note.isNotBlank()) Text("توضیحات: ${r.note}", style = MaterialTheme.typography.bodyMedium)
+                    // اگر نسخهٔ بعدی آمده، یک خط خلاصه (قرمز برای کنسلی، زرد برای اصلاحیه) با توضیحاتش
+                    if (next != null && r.status != Status.REQ_ACTIVE) {
+                        val cancelled = next.kind == "CANCEL"
+                        Text(
+                            (if (cancelled) "کنسل شد" else "اصلاح شد") + " در ${Jalali.fromMillis(next.createdAt).format()} ${Jalali.timeOf(next.createdAt)}" +
+                                (if (next.note.isNotBlank()) " — ${next.note}" else "") + "  (مشاهده)",
+                            color = if (cancelled) red else AmberColor,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.clickable { onOpen(next.id) },
+                        )
+                    }
                     if (r.status == Status.REQ_ACTIVE) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onCorrect(r.id, isGold) }, enabled = !busy) { Text("اصلاحیه ❗❗") }
-                            OutlinedButton(onClick = { confirmCancel = true }, enabled = !busy) { Text("کنسلی ❌❌") }
+                            Button(onClick = { onCorrect(r.id, isGold) }, enabled = !busy,
+                                colors = ButtonDefaults.buttonColors(containerColor = AmberColor, contentColor = androidx.compose.ui.graphics.Color.White)) { Text("اصلاحیه") }
+                            Button(onClick = { confirmCancel = true }, enabled = !busy,
+                                colors = ButtonDefaults.buttonColors(containerColor = red, contentColor = androidx.compose.ui.graphics.Color.White)) { Text("کنسلی") }
                         }
                     }
                     if (r.parentId != null) TextButton(onClick = { onOpen(r.parentId) }) { Text("مشاهدهٔ نسخهٔ قبلی") }
@@ -81,25 +97,14 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
             }
         }
         if (failed) item { Button(onClick = { vm.retry(id) }) { Text("ارسال مجدد ناموفق‌ها") } }
-        item { Text(if (isGold) "وضعیت پیامک ارسال‌شده" else "پیامک‌های ارسال‌شده به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
-        items(recipients, key = { it.id }) { RecipientRow(it, tag) }
-        if (children.isNotEmpty()) {
-            item { Text("اصلاحیه / کنسلی این درخواست", style = MaterialTheme.typography.titleSmall) }
-            items(children, key = { it.id }) { c ->
-                Card(Modifier.fillMaxWidth().clickable { onOpen(c.id) }) {
-                    Row(Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(if (c.kind == "CANCEL") "کنسلی ❌❌" else "اصلاحیه ❗❗", style = MaterialTheme.typography.titleSmall)
-                        Text("${Jalali.fromMillis(c.createdAt).format()}  ${Jalali.timeOf(c.createdAt)}", style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-            }
-        }
+        item { Text(if (isGold) "وضعیت ارسال" else "وضعیت ارسال به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
+        items(recipients, key = { it.id }) { RecipientRow(it, tag, r) }
     }
     if (confirmCancel) {
         var cancelNote by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { confirmCancel = false },
-            title = { Text("کنسلی ❌❌") },
+            title = { Text("کنسلی") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("برای همهٔ طرف‌ها پیامک «کنسلی» ارسال می‌شود. ادامه می‌دهید؟")
@@ -112,17 +117,18 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
     }
 }
 
-/** پیامک یک طرف: نام، شماره و وضعیت؛ با زدن، متن پیامک باز می‌شود. */
+/** پیامک یک طرف: نام و شماره، وضعیت ارسال، و (اگر نسخهٔ بعدی آمده) برچسب رنگی؛ با زدن، متن پیامک باز می‌شود. */
 @Composable
-private fun RecipientRow(m: ir.goldpayamak.app.data.MessageEntity, tag: String?) {
+private fun RecipientRow(m: ir.goldpayamak.app.data.MessageEntity, tag: String?, r: ir.goldpayamak.app.data.RequestEntity) {
     var open by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth().clickable { open = !open }) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.titleSmall)
-                Text(statusLabel(m.status) + (tag?.let { " • $it" } ?: ""), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
+                Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
             }
-            if (open) Text(m.text, style = MaterialTheme.typography.bodyMedium)
+            if (tag != null) Text(tag, color = requestColor(r), style = MaterialTheme.typography.labelMedium)
+            if (open) Text(plain(m.text), style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

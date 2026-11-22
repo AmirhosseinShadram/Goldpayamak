@@ -191,7 +191,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             (if (p.isSelf) "${p.party.name} (شما) — فقط ثبت می‌شود" else "${p.party.name}  ${p.party.phone}") +
-                                if (p.kind == Kind.CANCEL) "  [کنسلی ❌❌]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه ❗❗]" else "",
+                                if (p.kind == Kind.CANCEL) "  [کنسلی]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه]" else "",
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Text(p.text, style = MaterialTheme.typography.bodyMedium)

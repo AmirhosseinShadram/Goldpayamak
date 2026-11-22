@@ -62,8 +62,6 @@ object PdfReport {
         fun needSpace(h: Float) { if (y + h > H - M) newPage() }
 
         val ok = Digits::toPersian
-        // ایموجی در PDF خوب رندر نمی‌شود؛ متن‌ها بدون ❌/❗ نوشته می‌شوند
-        fun plain(t: String) = t.replace("\u274C", "").replace("\u2757", "").lines().joinToString("\n") { it.trim() }
         block(reportTitle, title, gap = 6f)
         block("کاربر: $userName", normal)
         block("از تاریخ ${ok(fromText)} تا ${ok(toText)}", normal)

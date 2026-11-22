@@ -97,9 +97,9 @@ private fun ReportGroupCard(g: ReportGroup) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
-                Text(requestStateLabel(r), style = MaterialTheme.typography.labelMedium, color = statusColor(r.status))
+                Text(requestStateLabel(r), style = MaterialTheme.typography.labelMedium, color = requestColor(r))
             }
-            Text(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
+            Text(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
             if (r.note.isNotBlank()) Text("توضیحات: ${r.note}", style = MaterialTheme.typography.bodySmall)
             Text(if (open) "▲ پیامک‌های ارسال‌شده به طرف‌ها (${Digits.toPersian(g.recipients.size.toString())})"
                 else "▼ ${Digits.toPersian(g.recipients.size.toString())} پیامک به طرف‌ها",
@@ -110,7 +110,10 @@ private fun ReportGroupCard(g: ReportGroup) {
                     HorizontalDivider()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
-                        Text(statusLabel(m.status) + (tag?.let { " • $it" } ?: ""), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
+                        Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
+                    }
+                    if (tag != null) Row(Modifier.fillMaxWidth()) {
+                        Text(tag, color = requestColor(r), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }
