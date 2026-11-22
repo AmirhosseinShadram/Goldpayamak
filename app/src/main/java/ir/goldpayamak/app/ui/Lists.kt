@@ -29,7 +29,6 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
     val msgsByReq = remember(selfs, golds) { (selfs + golds).groupBy { it.requestId } }
     val actionsByRoot = remember(actions) { actions.groupBy { it.rootId } }
     var tab by remember { mutableIntStateOf(0) } // 0 = حواله، 1 = طلایی
-    var shown by remember { mutableStateOf<ir.goldpayamak.app.data.RequestEntity?>(null) }
     val type = if (tab == 0) "RING" else "GOLD"
     val list = remember(roots, type) { roots.filter { it.type == type } }
 
@@ -52,16 +51,11 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
                             // فقط پیام اول؛ با زدن روی آن می‌شود اصلاحیه یا کنسلی کرد
                             Text(plain(mainMessage(r, msgsByReq[r.id])?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
                         }
-                        if (acts.isNotEmpty()) {
-                            HorizontalDivider()
-                            ActionRows(acts) { shown = it }
-                        }
                     }
                 }
             }
         }
     }
-    shown?.let { a -> ActionDialog(a, mainMessage(a, msgsByReq[a.id])) { shown = null } }
 }
 
 @Composable
@@ -76,7 +70,7 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
     val root = chain.firstOrNull { it.id == rootId }
     if (root == null) { EmptyHint("..."); return }
     val actions = chain.filter { it.id != rootId }
-    val latest = chain.lastOrNull { it.status == Status.REQ_ACTIVE } // نسخهٔ فعال که اصلاح/کنسل روی آن اعمال می‌شود
+    val latest = chain.lastOrNull() // آخرین نسخه؛ اصلاحیه و کنسلی هر چند بار روی آن اعمال می‌شود
     val isGold = root.type == "GOLD"
     val byReq = remember(allMsgs) { allMsgs.groupBy { it.requestId } }
     val rootText = mainMessage(root, byReq[root.id])?.text
@@ -105,15 +99,15 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
                 }
             }
         }
+        if (failedReqs.isNotEmpty()) item { Button(onClick = { failedReqs.forEach { vm.retry(it) } }) { Text("ارسال مجدد ناموفق‌ها") } }
+        item { Text(if (isGold) "وضعیت ارسال" else "وضعیت ارسال به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
+        items(recipients, key = { it.id }) { RecipientRow(it) }
         if (actions.isNotEmpty()) {
             item { Text("کارهای انجام‌شده", style = MaterialTheme.typography.titleSmall) }
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(horizontal = 14.dp)) { ActionRows(actions) { shown = it } } } }
         }
-        if (failedReqs.isNotEmpty()) item { Button(onClick = { failedReqs.forEach { vm.retry(it) } }) { Text("ارسال مجدد ناموفق‌ها") } }
-        item { Text(if (isGold) "وضعیت ارسال" else "وضعیت ارسال به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
-        items(recipients, key = { it.id }) { RecipientRow(it) }
     }
-    shown?.let { a -> ActionDialog(a, mainMessage(a, byReq[a.id])) { shown = null } }
+    shown?.let { a -> ActionDialog(a, byReq[a.id].orEmpty()) { shown = null } }
     if (confirmCancel && latest != null) {
         var cancelNote by remember { mutableStateOf("") }
         AlertDialog(
@@ -131,17 +125,13 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
     }
 }
 
-/** پیامک یک طرف: نام و شماره و وضعیت ارسال؛ با زدن، متن پیامک باز می‌شود. */
+/** وضعیت ارسال یک طرف: نام، شماره و وضعیت (متن پیامک نمایش داده نمی‌شود). */
 @Composable
 private fun RecipientRow(m: ir.goldpayamak.app.data.MessageEntity) {
-    var open by remember { mutableStateOf(false) }
-    Card(Modifier.fillMaxWidth().clickable { open = !open }) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.titleSmall)
-                Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
-            }
-            if (open) Text(plain(m.text), style = MaterialTheme.typography.bodyMedium)
+    Card(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.titleSmall)
+            Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
         }
     }
 }

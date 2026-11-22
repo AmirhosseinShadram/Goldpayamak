@@ -129,6 +129,9 @@ interface AppDao {
     @Query("SELECT * FROM requests WHERE rootId = :rootId ORDER BY createdAt, id")
     fun chainOf(rootId: Long): Flow<List<RequestEntity>>
 
+    @Query("SELECT COUNT(*) FROM requests WHERE parentId = :id")
+    suspend fun childCount(id: Long): Int
+
     @Query("SELECT * FROM requests WHERE parentId = :id ORDER BY createdAt, id")
     fun children(id: Long): Flow<List<RequestEntity>>
 

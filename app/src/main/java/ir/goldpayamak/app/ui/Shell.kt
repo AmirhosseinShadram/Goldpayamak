@@ -59,7 +59,8 @@ fun MainShell(vm: AppViewModel) {
                     })
                     is Screen.GoldForm -> GoldForm(vm, top.parentId, onDone = { id -> stack = listOf(Screen.Detail(id)) })
                     is Screen.Detail -> DetailScreen(vm, top.requestId,
-                        onCorrect = { id, gold -> push(if (gold) Screen.GoldForm(id) else Screen.Form(id)) }, onOpen = { push(Screen.Detail(it)) })
+                        onCorrect = { id, gold -> push(if (gold) Screen.GoldForm(id) else Screen.Form(id)) },
+                        onOpen = { stack = stack.dropLast(1) + Screen.Detail(it) })
                     is Screen.ContactHistory -> ContactHistoryScreen(vm, top.phone)
                 }
             }

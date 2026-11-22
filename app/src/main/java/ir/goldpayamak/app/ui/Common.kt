@@ -65,17 +65,17 @@ fun EmptyHint(text: String) {
 fun mainMessage(r: RequestEntity, msgs: List<MessageEntity>?): MessageEntity? =
     msgs?.firstOrNull { it.status == Status.SELF } ?: msgs?.firstOrNull { it.kind == r.kind } ?: msgs?.firstOrNull()
 
-/** وضعیت کل زنجیره: آخرین اقدام کنسلی = کنسل شده، وگرنه اگر اصلاحیه‌ای باشد = اصلاح شده */
-fun chainState(actions: List<RequestEntity>): String = when {
-    actions.any { it.kind == "CANCEL" } -> "کنسل شده"
-    actions.any { it.kind == "CORRECTION" } -> "اصلاح شده"
+/** وضعیت کل زنجیره بر اساس آخرین اقدام: کنسلی = کنسل شده، اصلاحیه = اصلاح شده، بدون اقدام = فعال */
+fun chainState(actions: List<RequestEntity>): String = when (actions.lastOrNull()?.kind) {
+    "CANCEL" -> "کنسل شده"
+    "CORRECTION" -> "اصلاح شده"
     else -> "فعال"
 }
 
 @Composable
-fun chainColor(actions: List<RequestEntity>) = when {
-    actions.any { it.kind == "CANCEL" } -> MaterialTheme.colorScheme.error
-    actions.any { it.kind == "CORRECTION" } -> AmberColor
+fun chainColor(actions: List<RequestEntity>) = when (actions.lastOrNull()?.kind) {
+    "CANCEL" -> MaterialTheme.colorScheme.error
+    "CORRECTION" -> AmberColor
     else -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
@@ -95,9 +95,12 @@ fun ActionRows(actions: List<RequestEntity>, onClick: (RequestEntity) -> Unit) {
     }
 }
 
+/** پنجرهٔ یک اصلاحیه/کنسلی: متن پیام، توضیحات و وضعیت ارسال همان پیامک برای هر طرف. */
 @Composable
-fun ActionDialog(a: RequestEntity, msg: MessageEntity?, onDismiss: () -> Unit) {
+fun ActionDialog(a: RequestEntity, msgs: List<MessageEntity>, onDismiss: () -> Unit) {
     val cancel = a.kind == "CANCEL"
+    val msg = mainMessage(a, msgs)
+    val sent = msgs.filter { it.status != Status.SELF }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (cancel) "کنسلی" else "اصلاحیه", color = if (cancel) MaterialTheme.colorScheme.error else AmberColor) },
@@ -106,6 +109,16 @@ fun ActionDialog(a: RequestEntity, msg: MessageEntity?, onDismiss: () -> Unit) {
                 Text("${Jalali.fromMillis(a.createdAt).format()}  ${Jalali.timeOf(a.createdAt)}", style = MaterialTheme.typography.labelMedium)
                 Text(plain(msg?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
                 if (a.note.isNotBlank()) Text("توضیحات: ${a.note}", style = MaterialTheme.typography.bodyMedium)
+                if (sent.isNotEmpty()) {
+                    HorizontalDivider()
+                    Text("وضعیت ارسال", style = MaterialTheme.typography.titleSmall)
+                    sent.forEach { m ->
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
+                            Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("بستن") } },

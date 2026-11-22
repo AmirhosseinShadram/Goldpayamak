@@ -26,7 +26,7 @@ class Repo(private val ctx: Context) {
     /** اصلاحیه روی آخرین نسخهٔ فعال */
     suspend fun createCorrection(parentId: Long, userName: String, newRing: List<Party>, newPrice: Long, note: String = ""): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
-        check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل اصلاح است" }
+        check(dao.childCount(parentId) == 0) { "فقط آخرین نسخه قابل اصلاح است" }
         val oldRing = ringOf(parentId)
         val plan = Planner.correction(oldRing, parent.price, newRing, newPrice, note)
         return save(Kind.CORRECTION, parent, userName, newRing, newPrice, plan, note = note.trim())
@@ -43,7 +43,7 @@ class Repo(private val ctx: Context) {
 
     suspend fun createGoldCorrection(parentId: Long, userName: String, new: GoldData, note: String = ""): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
-        check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل اصلاح است" }
+        check(dao.childCount(parentId) == 0) { "فقط آخرین نسخه قابل اصلاح است" }
         val old = goldOf(parentId)
         return save(Kind.CORRECTION, parent, userName, listOf(new.party), new.amount,
             Gold.correction(userName, old, new, note), "GOLD", new.rate, new.side.name, note.trim())
@@ -51,7 +51,7 @@ class Repo(private val ctx: Context) {
 
     suspend fun createCancel(parentId: Long, userName: String, note: String = ""): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
-        check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل کنسلی است" }
+        check(dao.childCount(parentId) == 0) { "فقط آخرین نسخه قابل کنسلی است" }
         if (parent.type == "GOLD") {
             val old = goldOf(parentId)
             return save(Kind.CANCEL, parent, userName, listOf(old.party), old.amount, Gold.cancel(userName, old, note), "GOLD", old.rate, old.side.name, note.trim())
@@ -80,7 +80,7 @@ class Repo(private val ctx: Context) {
                 price = price, status = if (it.isSelf) Status.SELF else Status.PENDING, createdAt = now, updatedAt = now,
             )
         })
-        if (parent != null) {
+        if (parent != null && parent.status == Status.REQ_ACTIVE) {
             dao.setRequestStatus(parent.id, if (kind == Kind.CANCEL) Status.REQ_CANCELLED else Status.REQ_SUPERSEDED)
         }
         // طرف‌های جدید خودکار در مخاطبین برنامه ذخیره می‌شوند (اگر شمارهٔ تکراری نباشد)
