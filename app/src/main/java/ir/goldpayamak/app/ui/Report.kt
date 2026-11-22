@@ -38,9 +38,6 @@ fun ReportScreen(vm: AppViewModel) {
     val exportPdf = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
         if (uri != null) vm.exportPdf(uri, fromMs, toMs, fromText, toText) { ok -> exportMsg = if (ok) "فایل PDF ذخیره شد." else "ذخیرهٔ PDF ناموفق بود." }
     }
-    val exportCsv = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
-        if (uri != null) vm.exportCsv(uri, fromMs, toMs) { ok -> exportMsg = if (ok) "فایل CSV ذخیره شد." else "ذخیرهٔ CSV ناموفق بود." }
-    }
 
     fun setRange(daysBack: Int?) {
         val t = LocalDate.now(Jalali.TEHRAN)
@@ -76,7 +73,6 @@ fun ReportScreen(vm: AppViewModel) {
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(enabled = valid && groups.isNotEmpty(), onClick = { exportPdf.launch("report-$fileSuffix.pdf") }) { Text("دانلود PDF") }
-                OutlinedButton(enabled = valid && groups.isNotEmpty(), onClick = { exportCsv.launch("report-$fileSuffix.csv") }) { Text("CSV (Excel)") }
             }
             exportMsg?.let { Text(it) }
             Text("روی هر مورد بزنید تا پیامک‌های ارسال‌شده به طرف‌ها و وضعیتشان نمایش داده شود.", style = MaterialTheme.typography.bodySmall)

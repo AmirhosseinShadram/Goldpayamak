@@ -34,7 +34,6 @@ fun listSims(ctx: android.content.Context): List<Sim> {
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
     val ctx = LocalContext.current
-    var name by remember { mutableStateOf(vm.displayName) }
     var delay by remember { mutableStateOf(vm.prefs.delaySeconds.toString()) }
     var subId by remember { mutableIntStateOf(vm.prefs.subId) }
     var sims by remember { mutableStateOf<List<Sim>>(emptyList()) }
@@ -51,9 +50,6 @@ fun SettingsScreen(vm: AppViewModel) {
     LaunchedEffect(Unit) { loadSims() }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        OutlinedTextField(name, { name = it }, label = { Text("نام شما (اول هر پیامک)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        Button(onClick = { if (name.isNotBlank()) vm.saveName(name) }) { Text("ذخیرهٔ نام") }
-        HorizontalDivider()
         Text("سیم‌کارت ارسال", style = MaterialTheme.typography.titleSmall)
         if (needPerm) {
             Text("برای انتخاب سیم‌کارت، مجوز خواندن وضعیت تلفن لازم است. اگر انتخاب نکنید از سیم‌کارت پیش‌فرض پیامک گوشی استفاده می‌شود.")

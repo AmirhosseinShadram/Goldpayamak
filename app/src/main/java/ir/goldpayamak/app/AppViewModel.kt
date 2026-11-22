@@ -68,8 +68,6 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun saveName(n: String) { prefs.displayName = n; displayName = prefs.displayName }
-
     // ---- درخواست‌ها ----
     fun sendNew(ring: List<Party>, price: Long, onDone: (Long) -> Unit) = guarded {
         val id = repo.createOriginal(displayName, ring, price)
@@ -115,35 +113,6 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
                 app.contentResolver.openOutputStream(uri, "wt")!!.use {
                     ir.goldpayamak.app.ui.PdfReport.write(it, displayName, fromText, toText, groups)
                 }
-                true
-            } catch (e: Exception) { false }
-        }
-        onDone(ok)
-    }
-
-    fun exportCsv(uri: Uri, from: Long, to: Long, onDone: (Boolean) -> Unit) = viewModelScope.launch {
-        val ok = withContext(Dispatchers.IO) {
-            try {
-                val rows = dao.messagesBetweenOnce(from, to).map { m ->
-                    listOf(
-                        Jalali.fromMillis(m.createdAt).format(),
-                        Jalali.timeOf(m.createdAt),
-                        kindLabel(m.kind),
-                        m.name,
-                        m.phone,
-                        m.price.toString(),
-                        statusLabel(m.status),
-                        m.text,
-                    ).mapIndexed { i, c ->
-                        when (i) {
-                            4 -> Csv.phoneCell(c)
-                            5 -> c
-                            else -> Csv.quote(Csv.safe(c))
-                        }
-                    }
-                }
-                val csv = Csv.build(listOf("تاریخ", "ساعت", "نوع", "نام", "شماره", "قیمت", "وضعیت", "متن پیام"), rows)
-                app.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(csv.toByteArray(Charsets.UTF_8)) }
                 true
             } catch (e: Exception) { false }
         }

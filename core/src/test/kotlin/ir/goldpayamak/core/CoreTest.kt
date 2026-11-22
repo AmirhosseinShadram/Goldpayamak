@@ -126,12 +126,4 @@ class CoreTest {
         assertTrue(Planner.validate(dup).isNotEmpty())
         assertTrue(Planner.validate(listOf(Party("A", "09111111111"), Party("Me", ""))).isNotEmpty())
     }
-
-    @Test fun csv() {
-        assertEquals("'=1+1", Csv.safe("=1+1"))
-        assertEquals("=\"09123456789\"", Csv.phoneCell("09123456789"))
-        val out = Csv.build(listOf("a", "b"), listOf(listOf(Csv.quote("x\"y"), "1")))
-        assertTrue(out.startsWith("﻿"))
-        assertTrue(out.contains("\"x\"\"y\",1\r\n"))
-    }
 }
