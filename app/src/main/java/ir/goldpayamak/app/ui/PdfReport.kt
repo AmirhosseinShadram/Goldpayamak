@@ -64,11 +64,6 @@ object PdfReport {
         block(reportTitle, title, gap = 6f)
         block("کاربر: $userName", normal)
         block("از تاریخ ${ok(fromText)} تا ${ok(toText)}", normal)
-        val recipients = groups.flatMap { it.recipients }
-        val sent = recipients.count { it.status == "SENT" || it.status == "DELIVERED" }
-        val failed = recipients.count { it.status == "FAILED" }
-        block("${ok(groups.size.toString())} ثبت • ${ok(recipients.size.toString())} پیامک به طرف‌ها • ارسال‌شده ${ok(sent.toString())} • ناموفق ${ok(failed.toString())}", small, gap = 10f)
-
         if (groups.isEmpty()) block("در این بازه موردی ثبت نشده است.", normal)
 
         for (g in groups) {

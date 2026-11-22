@@ -72,12 +72,6 @@ fun ReportScreen(vm: AppViewModel) {
         }
         if (!valid) item { Text("تاریخ‌ها را به شکل ۱۴۰۵/۰۹/۰۱ وارد کنید و تاریخ شروع قبل از پایان باشد.", color = MaterialTheme.colorScheme.error) }
         item {
-            val rec = groups.flatMap { it.recipients }
-            val sent = rec.count { it.status == Status.SENT || it.status == Status.DELIVERED }
-            val failed = rec.count { it.status == Status.FAILED }
-            Text("${Digits.toPersian(groups.size.toString())} ثبت • ${Digits.toPersian(rec.size.toString())} پیامک به طرف‌ها • " +
-                "ارسال‌شده ${Digits.toPersian(sent.toString())} • ناموفق ${Digits.toPersian(failed.toString())}",
-                style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(enabled = valid && groups.isNotEmpty(), onClick = { exportPdf.launch("report-$fileSuffix.pdf") }) { Text("دانلود PDF") }
