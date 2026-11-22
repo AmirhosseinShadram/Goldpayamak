@@ -10,7 +10,6 @@ import android.text.TextDirectionHeuristics
 import android.text.TextPaint
 import ir.goldpayamak.app.data.ReportGroup
 import ir.goldpayamak.app.data.requestStateLabel
-import ir.goldpayamak.app.data.supersededTag
 import ir.goldpayamak.app.statusLabel
 import ir.goldpayamak.core.Digits
 import ir.goldpayamak.core.Jalali
@@ -82,9 +81,8 @@ object PdfReport {
             block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${plain(requestStateLabel(r))} • $priceText", small)
             block(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "(بدون متن)"), bold, gap = 6f)
             if (r.note.isNotBlank()) block("توضیحات: ${r.note}", normal, gap = 6f)
-            val tag = supersededTag(r)
             for (m in g.recipients) {
-                val st = plain(statusLabel(m.status) + (tag?.let { " • $it" } ?: ""))
+                val st = plain(statusLabel(m.status))
                 block("${m.name}  ${m.phone}  —  $st", normal, indent = 16, gap = 2f)
             }
             if (g.recipients.isEmpty()) block("(پیامکی به طرف‌ها ارسال نشده)", small, indent = 16)

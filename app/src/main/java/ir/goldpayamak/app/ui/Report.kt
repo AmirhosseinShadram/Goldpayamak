@@ -105,15 +105,11 @@ private fun ReportGroupCard(g: ReportGroup) {
                 else "▼ ${Digits.toPersian(g.recipients.size.toString())} پیامک به طرف‌ها",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
             if (open) {
-                val tag = supersededTag(r)
                 g.recipients.forEach { m ->
                     HorizontalDivider()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
                         Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
-                    }
-                    if (tag != null) Row(Modifier.fillMaxWidth()) {
-                        Text(tag, color = requestColor(r), style = MaterialTheme.typography.labelMedium)
                     }
                 }
             }

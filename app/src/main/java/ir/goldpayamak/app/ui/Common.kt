@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Color
 import ir.goldpayamak.app.data.RequestEntity
 import androidx.compose.ui.unit.dp
 import ir.goldpayamak.app.data.MessageEntity
+import androidx.compose.foundation.clickable
 import ir.goldpayamak.app.data.Status
 import ir.goldpayamak.app.kindLabel
 import ir.goldpayamak.app.statusLabel
@@ -58,4 +59,55 @@ fun EmptyHint(text: String) {
     Box(Modifier.fillMaxSize().padding(24.dp), contentAlignment = androidx.compose.ui.Alignment.Center) {
         Text(text, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
+}
+
+/** متن اصلی یک درخواست: پیام طرف ۲ (حواله) یا پیام گیرنده (طلایی) */
+fun mainMessage(r: RequestEntity, msgs: List<MessageEntity>?): MessageEntity? =
+    msgs?.firstOrNull { it.status == Status.SELF } ?: msgs?.firstOrNull { it.kind == r.kind } ?: msgs?.firstOrNull()
+
+/** وضعیت کل زنجیره: آخرین اقدام کنسلی = کنسل شده، وگرنه اگر اصلاحیه‌ای باشد = اصلاح شده */
+fun chainState(actions: List<RequestEntity>): String = when {
+    actions.any { it.kind == "CANCEL" } -> "کنسل شده"
+    actions.any { it.kind == "CORRECTION" } -> "اصلاح شده"
+    else -> "فعال"
+}
+
+@Composable
+fun chainColor(actions: List<RequestEntity>) = when {
+    actions.any { it.kind == "CANCEL" } -> MaterialTheme.colorScheme.error
+    actions.any { it.kind == "CORRECTION" } -> AmberColor
+    else -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
+/** کارهای انجام‌شده روی یک درخواست (اصلاحیه/کنسلی)؛ با زدن روی هر کدام، پیامش نمایش داده می‌شود. */
+@Composable
+fun ActionRows(actions: List<RequestEntity>, onClick: (RequestEntity) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        actions.forEach { a ->
+            val cancel = a.kind == "CANCEL"
+            Text(
+                (if (cancel) "کنسلی" else "اصلاحیه") + "  •  ${Jalali.fromMillis(a.createdAt).format()} ${Jalali.timeOf(a.createdAt)}",
+                color = if (cancel) MaterialTheme.colorScheme.error else AmberColor,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.fillMaxWidth().clickable { onClick(a) }.padding(vertical = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionDialog(a: RequestEntity, msg: MessageEntity?, onDismiss: () -> Unit) {
+    val cancel = a.kind == "CANCEL"
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (cancel) "کنسلی" else "اصلاحیه", color = if (cancel) MaterialTheme.colorScheme.error else AmberColor) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("${Jalali.fromMillis(a.createdAt).format()}  ${Jalali.timeOf(a.createdAt)}", style = MaterialTheme.typography.labelMedium)
+                Text(plain(msg?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
+                if (a.note.isNotBlank()) Text("توضیحات: ${a.note}", style = MaterialTheme.typography.bodyMedium)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("بستن") } },
+    )
 }

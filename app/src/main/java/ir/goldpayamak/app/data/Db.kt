@@ -118,6 +118,17 @@ interface AppDao {
     @Query("SELECT * FROM messages WHERE status = 'SELF'")
     fun selfMessages(): Flow<List<MessageEntity>>
 
+    /** فقط پیام اول (ریشهٔ هر درخواست) برای تاریخچه */
+    @Query("SELECT * FROM requests WHERE kind = 'ORIGINAL' ORDER BY createdAt DESC, id DESC")
+    fun roots(): Flow<List<RequestEntity>>
+
+    /** همهٔ اصلاحیه‌ها و کنسلی‌ها (زیرمجموعهٔ هر ریشه با rootId) */
+    @Query("SELECT * FROM requests WHERE kind != 'ORIGINAL' ORDER BY createdAt, id")
+    fun actions(): Flow<List<RequestEntity>>
+
+    @Query("SELECT * FROM requests WHERE rootId = :rootId ORDER BY createdAt, id")
+    fun chainOf(rootId: Long): Flow<List<RequestEntity>>
+
     @Query("SELECT * FROM requests WHERE parentId = :id ORDER BY createdAt, id")
     fun children(id: Long): Flow<List<RequestEntity>>
 

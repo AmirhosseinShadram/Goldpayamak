@@ -27,6 +27,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     val contacts = dao.contacts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val goldMessages = dao.goldMessages().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val selfMessages = dao.selfMessages().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val roots = dao.roots().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val actions = dao.actions().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val requests = dao.requests().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** پیام خطای قابل‌نمایش به کاربر */
