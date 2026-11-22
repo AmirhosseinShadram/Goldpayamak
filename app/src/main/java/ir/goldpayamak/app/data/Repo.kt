@@ -2,6 +2,9 @@ package ir.goldpayamak.app.data
 
 import android.content.Context
 import androidx.room.withTransaction
+import ir.goldpayamak.core.Gold
+import ir.goldpayamak.core.GoldData
+import ir.goldpayamak.core.GoldSide
 import ir.goldpayamak.core.Kind
 import ir.goldpayamak.core.Party
 import ir.goldpayamak.core.Planned
@@ -29,21 +32,43 @@ class Repo(private val ctx: Context) {
         return save(Kind.CORRECTION, parent, userName, newRing, newPrice, plan)
     }
 
+    suspend fun goldOf(requestId: Long): GoldData {
+        val r = dao.requestOnce(requestId) ?: error("درخواست پیدا نشد")
+        val party = ringOf(requestId).first()
+        return GoldData(party, GoldSide.valueOf(r.side), r.price, r.rate)
+    }
+
+    suspend fun createGold(userName: String, d: GoldData): Long =
+        save(Kind.ORIGINAL, null, userName, listOf(d.party), d.amount, Gold.original(userName, d), "GOLD", d.rate, d.side.name)
+
+    suspend fun createGoldCorrection(parentId: Long, userName: String, new: GoldData): Long {
+        val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
+        check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل اصلاح است" }
+        val old = goldOf(parentId)
+        return save(Kind.CORRECTION, parent, userName, listOf(new.party), new.amount,
+            Gold.correction(userName, old, new), "GOLD", new.rate, new.side.name)
+    }
+
     suspend fun createCancel(parentId: Long, userName: String): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
         check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل لغو است" }
+        if (parent.type == "GOLD") {
+            val old = goldOf(parentId)
+            return save(Kind.CANCEL, parent, userName, listOf(old.party), old.amount, Gold.cancel(userName, old), "GOLD", old.rate, old.side.name)
+        }
         val ring = ringOf(parentId)
         return save(Kind.CANCEL, parent, userName, ring, parent.price, Planner.cancel(ring, parent.price))
     }
 
     private suspend fun save(
         kind: Kind, parent: RequestEntity?, userName: String, ring: List<Party>, price: Long, plan: List<Planned>,
+        type: String = "RING", rate: Long = 0, side: String = "",
     ): Long = db.withTransaction {
         val now = System.currentTimeMillis()
         val status = if (kind == Kind.CANCEL) Status.REQ_RECORD else Status.REQ_ACTIVE
         val id = dao.insertRequest(
             RequestEntity(rootId = parent?.rootId ?: 0, parentId = parent?.id, kind = kind.name, price = price,
-                userName = userName, createdAt = now, status = status)
+                userName = userName, createdAt = now, status = status, type = type, rate = rate, side = side)
         )
         if (parent == null) dao.setRoot(id, id)
         dao.insertParties(ring.mapIndexed { i, p ->

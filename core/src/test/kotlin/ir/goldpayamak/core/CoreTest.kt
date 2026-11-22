@@ -126,4 +126,22 @@ class CoreTest {
         assertTrue(Planner.validate(dup).isNotEmpty())
         assertTrue(Planner.validate(listOf(Party("A", "09111111111"), Party("Me", ""))).isNotEmpty())
     }
+
+    @Test fun goldMessages() {
+        val a = GoldData(Party("سینا", "09111111111"), GoldSide.SELL, 600000, 10000000)
+        assertEquals("بابت امیر فروختم به سینا ۶۰۰,۰۰۰ در فی طلایی ۱۰,۰۰۰,۰۰۰", Gold.sentence("امیر", a))
+        val b = a.copy(side = GoldSide.BUY, amount = 700000)
+        assertEquals("بابت امیر خریدم به سینا ۷۰۰,۰۰۰ در فی طلایی ۱۰,۰۰۰,۰۰۰", Gold.sentence("امیر", b))
+        assertEquals("اصلاحیه:\nبابت امیر خریدم به سینا ۷۰۰,۰۰۰ در فی طلایی ۱۰,۰۰۰,۰۰۰",
+            Gold.correction("امیر", a, b).single().text)
+        val c = Gold.cancel("امیر", a).single()
+        assertEquals(Kind.CANCEL, c.kind)
+        assertTrue(c.text.startsWith("لغو:\nبابت امیر فروختم"))
+        // گیرندهٔ جدید: قبلی لغو، جدید پیام اصلی
+        val other = b.copy(party = Party("رضا", "09122222222"))
+        val plan = Gold.correction("امیر", a, other)
+        assertEquals(listOf(Kind.ORIGINAL, Kind.CANCEL), plan.map { it.kind })
+        assertTrue(Gold.validate(a.copy(amount = 0)).isNotEmpty())
+        assertTrue(Gold.validate(a).isEmpty())
+    }
 }

@@ -23,7 +23,7 @@ object PdfReport {
     private const val H = 842
     private const val M = 36
 
-    fun write(out: OutputStream, userName: String, fromText: String, toText: String, groups: List<ReportGroup>) {
+    fun write(out: OutputStream, userName: String, fromText: String, toText: String, groups: List<ReportGroup>, reportTitle: String) {
         val doc = PdfDocument()
         var pageNo = 1
         var page = doc.startPage(PdfDocument.PageInfo.Builder(W, H, pageNo).create())
@@ -62,7 +62,7 @@ object PdfReport {
         fun needSpace(h: Float) { if (y + h > H - M) newPage() }
 
         val ok = Digits::toPersian
-        block("گزارش پیامک‌ها", title, gap = 6f)
+        block(reportTitle, title, gap = 6f)
         block("کاربر: $userName", normal)
         block("از تاریخ ${ok(fromText)} تا ${ok(toText)}", normal)
         val recipients = groups.flatMap { it.recipients }
@@ -77,8 +77,10 @@ object PdfReport {
             page.canvas.drawLine(M.toFloat(), y, (W - M).toFloat(), y, line)
             y += 8f
             val r = g.request
-            block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${requestStateLabel(r)} • قیمت ${Price.format(r.price)}", small)
-            block(g.self?.text ?: "(بدون متن)", bold, gap = 6f)
+            val isGold = r.type == "GOLD"
+            val priceText = if (isGold) "مبلغ ${Price.format(r.price)} • فی ${Price.format(r.rate)}" else "قیمت ${Price.format(r.price)}"
+            block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${requestStateLabel(r)} • $priceText", small)
+            block(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "(بدون متن)", bold, gap = 6f)
             val tag = supersededTag(r)
             for (m in g.recipients) {
                 val st = statusLabel(m.status) + (tag?.let { " • $it" } ?: "")

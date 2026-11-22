@@ -34,6 +34,9 @@ fun listSims(ctx: android.content.Context): List<Sim> {
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
     val ctx = LocalContext.current
+    var name by remember { mutableStateOf(vm.displayName) }
+    var confirmClear by remember { mutableStateOf(false) }
+    var clearedMsg by remember { mutableStateOf<String?>(null) }
     var delay by remember { mutableStateOf(vm.prefs.delaySeconds.toString()) }
     var subId by remember { mutableIntStateOf(vm.prefs.subId) }
     var sims by remember { mutableStateOf<List<Sim>>(emptyList()) }
@@ -50,6 +53,9 @@ fun SettingsScreen(vm: AppViewModel) {
     LaunchedEffect(Unit) { loadSims() }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        OutlinedTextField(name, { name = it }, label = { Text("نام شما (در پیامک‌ها)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+        Button(onClick = { if (name.isNotBlank()) vm.saveName(name) }) { Text("ذخیرهٔ نام") }
+        HorizontalDivider()
         Text("سیم‌کارت ارسال", style = MaterialTheme.typography.titleSmall)
         if (needPerm) {
             Text("برای انتخاب سیم‌کارت، مجوز خواندن وضعیت تلفن لازم است. اگر انتخاب نکنید از سیم‌کارت پیش‌فرض پیامک گوشی استفاده می‌شود.")
@@ -71,7 +77,24 @@ fun SettingsScreen(vm: AppViewModel) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
             supportingText = { Text("برای جلوگیری از مسدود شدن توسط اپراتور، وقفه را زیاد کم نکنید.") })
         HorizontalDivider()
+        HorizontalDivider()
+        OutlinedButton(onClick = { confirmClear = true }, colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
+            Text("پاک کردن دیتابیس")
+        }
+        clearedMsg?.let { Text(it) }
         Text("توجه: گوشی باید روشن و برنامه باز باشد تا ارسال کامل شود. پیامک فارسی در هر بخش ۷۰ کاراکتر است و پیام طولانی چندبخشی حساب می‌شود.",
             style = MaterialTheme.typography.bodySmall)
     }
+
+    if (confirmClear) AlertDialog(
+        onDismissRequest = { confirmClear = false },
+        title = { Text("پاک کردن دیتابیس") },
+        text = { Text("همهٔ مخاطبین، درخواست‌ها، پیام‌ها و گزارش‌ها برای همیشه پاک می‌شوند و برگشت ندارند. نام و فعال‌سازی برنامه می‌ماند. ادامه می‌دهید؟") },
+        confirmButton = {
+            TextButton(onClick = { confirmClear = false; vm.clearAll { clearedMsg = "دیتابیس پاک شد." } }) {
+                Text("پاک شود", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = { TextButton(onClick = { confirmClear = false }) { Text("انصراف") } },
+    )
 }

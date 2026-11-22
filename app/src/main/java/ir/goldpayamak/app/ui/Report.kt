@@ -31,12 +31,14 @@ fun ReportScreen(vm: AppViewModel) {
     val toMs = if (valid) Jalali.endOfDayMillis(to!!) else -1L
     val reqs by remember(fromMs, toMs) { vm.dao.requestsBetween(fromMs, toMs) }.collectAsState(initial = emptyList())
     val msgs by remember(fromMs, toMs) { vm.dao.messagesBetween(fromMs, toMs) }.collectAsState(initial = emptyList())
-    val groups = remember(reqs, msgs) { groupReport(reqs, msgs) }
+    var typeTab by remember { mutableIntStateOf(0) } // 0 = حواله، 1 = طلایی
+    val typeKey = if (typeTab == 0) "RING" else "GOLD"
+    val groups = remember(reqs, msgs, typeKey) { groupReport(reqs, msgs).filter { it.request.type == typeKey } }
     var exportMsg by remember { mutableStateOf<String?>(null) }
     val fileSuffix = Digits.toLatin("${fromText}_${toText}").replace('/', '-')
 
     val exportPdf = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
-        if (uri != null) vm.exportPdf(uri, fromMs, toMs, fromText, toText) { ok -> exportMsg = if (ok) "فایل PDF ذخیره شد." else "ذخیرهٔ PDF ناموفق بود." }
+        if (uri != null) vm.exportPdf(uri, fromMs, toMs, fromText, toText, typeKey) { ok -> exportMsg = if (ok) "فایل PDF ذخیره شد." else "ذخیرهٔ PDF ناموفق بود." }
     }
 
     fun setRange(daysBack: Int?) {
@@ -46,6 +48,12 @@ fun ReportScreen(vm: AppViewModel) {
     }
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        item {
+            TabRow(selectedTabIndex = typeTab) {
+                Tab(selected = typeTab == 0, onClick = { typeTab = 0 }, text = { Text("گزارش حواله") })
+                Tab(selected = typeTab == 1, onClick = { typeTab = 1 }, text = { Text("گزارش طلایی") })
+            }
+        }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(fromText, { fromText = it }, label = { Text("از تاریخ (شمسی)") }, singleLine = true,
@@ -75,7 +83,7 @@ fun ReportScreen(vm: AppViewModel) {
                 Button(enabled = valid && groups.isNotEmpty(), onClick = { exportPdf.launch("report-$fileSuffix.pdf") }) { Text("دانلود PDF") }
             }
             exportMsg?.let { Text(it) }
-            Text("روی هر مورد بزنید تا پیامک‌های ارسال‌شده به طرف‌ها و وضعیتشان نمایش داده شود.", style = MaterialTheme.typography.bodySmall)
+            if (typeTab == 0) Text("روی هر مورد بزنید تا پیامک‌های ارسال‌شده به طرف‌ها و وضعیتشان نمایش داده شود.", style = MaterialTheme.typography.bodySmall)
         }
         items(groups, key = { it.request.id }) { g -> ReportGroupCard(g) }
     }
@@ -91,7 +99,7 @@ private fun ReportGroupCard(g: ReportGroup) {
                 Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
                 Text(requestStateLabel(r), style = MaterialTheme.typography.labelMedium, color = statusColor(r.status))
             }
-            Text(g.self?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
+            Text(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
             Text(if (open) "▲ پیامک‌های ارسال‌شده به طرف‌ها (${Digits.toPersian(g.recipients.size.toString())})"
                 else "▼ ${Digits.toPersian(g.recipients.size.toString())} پیامک به طرف‌ها",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)

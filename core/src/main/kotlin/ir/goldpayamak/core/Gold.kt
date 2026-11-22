@@ -1,0 +1,48 @@
+package ir.goldpayamak.core
+
+enum class GoldSide(val word: String) { SELL("فروختم"), BUY("خریدم") }
+
+/** درخواست «طلایی»: پیامک به یک نفر. مبلغ و فی طلایی هر دو قیمت‌اند (سه رقم سه رقم جدا می‌شوند). */
+data class GoldData(val party: Party, val side: GoldSide, val amount: Long, val rate: Long)
+
+object Gold {
+    // قالب ثابت: «بابت {نام کاربر} {فروختم|خریدم} به {نام گیرنده} {مبلغ} در فی طلایی {فی}»
+    const val TEMPLATE = "بابت {user} {side} به {to} {amount} در فی طلایی {rate}"
+
+    fun sentence(userName: String, d: GoldData): String = TEMPLATE
+        .replace("{user}", userName)
+        .replace("{side}", d.side.word)
+        .replace("{to}", d.party.name)
+        .replace("{amount}", Price.format(d.amount))
+        .replace("{rate}", Price.format(d.rate))
+
+    fun body(userName: String, kind: Kind, d: GoldData): String = buildString {
+        when (kind) {
+            Kind.CORRECTION -> append(MessageText.CORRECTION_PREFIX).append('\n')
+            Kind.CANCEL -> append(MessageText.CANCEL_PREFIX).append('\n')
+            Kind.ORIGINAL -> {}
+        }
+        append(sentence(userName, d))
+    }
+
+    private fun planned(userName: String, kind: Kind, d: GoldData) =
+        Planned(d.party, false, kind, body(userName, kind, d))
+
+    fun original(userName: String, d: GoldData) = listOf(planned(userName, Kind.ORIGINAL, d))
+
+    fun cancel(userName: String, old: GoldData) = listOf(planned(userName, Kind.CANCEL, old))
+
+    /** اصلاحیه: اگر گیرنده همان باشد یک پیام اصلاحیه؛ اگر گیرنده عوض شده، گیرندهٔ قبلی «لغو» و گیرندهٔ جدید پیام اصلی می‌گیرد. */
+    fun correction(userName: String, old: GoldData, new: GoldData): List<Planned> =
+        if (old.party.phone == new.party.phone) listOf(planned(userName, Kind.CORRECTION, new))
+        else listOf(planned(userName, Kind.ORIGINAL, new), planned(userName, Kind.CANCEL, old))
+
+    fun validate(d: GoldData): List<String> {
+        val e = ArrayList<String>()
+        if (d.party.name.isBlank()) e += "نام گیرنده را وارد کنید"
+        if (Phone.normalize(d.party.phone) == null) e += "شمارهٔ گیرنده باید موبایل معتبر باشد"
+        if (d.amount <= 0) e += "مبلغ را وارد کنید"
+        if (d.rate <= 0) e += "فی طلایی را وارد کنید"
+        return e
+    }
+}

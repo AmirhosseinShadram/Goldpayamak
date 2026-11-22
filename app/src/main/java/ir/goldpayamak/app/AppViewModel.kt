@@ -25,6 +25,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var displayName by mutableStateOf(prefs.displayName)
 
     val contacts = dao.contacts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val goldMessages = dao.goldMessages().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val selfMessages = dao.selfMessages().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val requests = dao.requests().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -81,6 +82,28 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         onDone(id)
     }
 
+    fun sendGold(d: GoldData, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createGold(displayName, d)
+        SendService.start(app, id)
+        onDone(id)
+    }
+
+    fun sendGoldCorrection(parentId: Long, d: GoldData, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createGoldCorrection(parentId, displayName, d)
+        SendService.start(app, id)
+        onDone(id)
+    }
+
+    suspend fun goldOf(id: Long) = repo.goldOf(id)
+
+    fun saveName(n: String) { prefs.displayName = n; displayName = prefs.displayName }
+
+    /** حذف همهٔ مخاطبین، درخواست‌ها و پیام‌ها (فعال‌سازی و نام باقی می‌ماند) */
+    fun clearAll(onDone: () -> Unit) = guarded {
+        withContext(Dispatchers.IO) { AppDb.get(app).clearAllTables() }
+        onDone()
+    }
+
     fun cancel(parentId: Long, onDone: (Long) -> Unit) = guarded {
         val id = repo.createCancel(parentId, displayName)
         SendService.start(app, id)
@@ -106,12 +129,12 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun deleteContact(c: ContactEntity) = guarded { dao.deleteContact(c) }
 
     // ---- گزارش ----
-    fun exportPdf(uri: Uri, from: Long, to: Long, fromText: String, toText: String, onDone: (Boolean) -> Unit) = viewModelScope.launch {
+    fun exportPdf(uri: Uri, from: Long, to: Long, fromText: String, toText: String, type: String, onDone: (Boolean) -> Unit) = viewModelScope.launch {
         val ok = withContext(Dispatchers.IO) {
             try {
-                val groups = groupReport(dao.requestsBetweenOnce(from, to), dao.messagesBetweenOnce(from, to))
+                val groups = groupReport(dao.requestsBetweenOnce(from, to), dao.messagesBetweenOnce(from, to)).filter { it.request.type == type }
                 app.contentResolver.openOutputStream(uri, "wt")!!.use {
-                    ir.goldpayamak.app.ui.PdfReport.write(it, displayName, fromText, toText, groups)
+                    ir.goldpayamak.app.ui.PdfReport.write(it, displayName, fromText, toText, groups, if (type == "GOLD") "گزارش طلایی" else "گزارش حواله")
                 }
                 true
             } catch (e: Exception) { false }

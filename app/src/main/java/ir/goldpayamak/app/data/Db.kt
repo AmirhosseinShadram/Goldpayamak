@@ -35,6 +35,12 @@ data class RequestEntity(
     val userName: String,
     val createdAt: Long,
     val status: String,
+    /** RING = حواله (حلقهٔ طرف‌ها)، GOLD = طلایی (یک گیرنده) */
+    @ColumnInfo(defaultValue = "'RING'") val type: String = "RING",
+    /** فقط طلایی: فی طلایی (قیمت دوم)؛ مبلغ در price ذخیره می‌شود */
+    @ColumnInfo(defaultValue = "0") val rate: Long = 0,
+    /** فقط طلایی: SELL یا BUY */
+    @ColumnInfo(defaultValue = "''") val side: String = "",
 )
 
 @Entity(tableName = "parties", indices = [Index("requestId")])
@@ -101,6 +107,10 @@ interface AppDao {
 
     @Query("SELECT * FROM requests WHERE kind != 'CANCEL' ORDER BY createdAt DESC, id DESC")
     fun requests(): Flow<List<RequestEntity>>
+
+    /** پیامک درخواست‌های طلایی (برای نمایش متن در تاریخچه) */
+    @Query("SELECT m.* FROM messages m JOIN requests r ON r.id = m.requestId WHERE r.type = 'GOLD'")
+    fun goldMessages(): Flow<List<MessageEntity>>
 
     /** پیام طرف ۲ (ثبت‌شده، ارسال‌نشده) همهٔ درخواست‌ها برای نمایش در تاریخچه */
     @Query("SELECT * FROM messages WHERE status = 'SELF'")
@@ -183,9 +193,17 @@ interface AppDao {
     suspend fun failStale(before: Long)
 }
 
+private val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE requests ADD COLUMN type TEXT NOT NULL DEFAULT 'RING'")
+        db.execSQL("ALTER TABLE requests ADD COLUMN rate INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE requests ADD COLUMN side TEXT NOT NULL DEFAULT ''")
+    }
+}
+
 @Database(
     entities = [ContactEntity::class, RequestEntity::class, PartyEntity::class, MessageEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false,
 )
 abstract class AppDb : RoomDatabase() {
@@ -195,6 +213,7 @@ abstract class AppDb : RoomDatabase() {
         @Volatile private var inst: AppDb? = null
         fun get(ctx: Context): AppDb = inst ?: synchronized(this) {
             inst ?: Room.databaseBuilder(ctx.applicationContext, AppDb::class.java, "goldpayamak.db")
+                .addMigrations(MIGRATION_1_2)
                 .build().also { inst = it }
         }
     }

@@ -26,7 +26,8 @@ import ir.goldpayamak.core.Price
 fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
     val list by vm.requests.collectAsState()
     val selfs by vm.selfMessages.collectAsState()
-    val selfByReq = remember(selfs) { selfs.associateBy { it.requestId } }
+    val golds by vm.goldMessages.collectAsState()
+    val selfByReq = remember(selfs, golds) { (selfs + golds).associateBy { it.requestId } }
     if (list.isEmpty()) { EmptyHint("هنوز درخواستی ثبت نشده است."); return }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(list, key = { it.id }) { r ->
@@ -34,7 +35,7 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
-                        Text(requestStateLabel(r), color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
+                        Text((if (r.type == "GOLD") "طلایی • " else "حواله • ") + requestStateLabel(r), color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
                     }
                     // متن پیام طرف ۲ (خود کاربر)؛ با زدن روی آن می‌شود اصلاح یا لغو کرد
                     Text(selfByReq[r.id]?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
@@ -45,14 +46,15 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
 }
 
 @Composable
-fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long) -> Unit, onOpen: (Long) -> Unit) {
+fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit, onOpen: (Long) -> Unit) {
     val req by remember(id) { vm.dao.request(id) }.collectAsState(initial = null)
     val msgs by remember(id) { vm.dao.messagesOf(id) }.collectAsState(initial = emptyList())
     val children by remember(id) { vm.dao.children(id) }.collectAsState(initial = emptyList())
     var confirmCancel by remember { mutableStateOf(false) }
     val r = req
     if (r == null) { EmptyHint("..."); return }
-    val self = msgs.firstOrNull { it.status == Status.SELF }
+    val isGold = r.type == "GOLD"
+    val self = msgs.firstOrNull { it.status == Status.SELF } ?: if (isGold) msgs.firstOrNull() else null
     val recipients = msgs.filter { it.status != Status.SELF }
     val failed = recipients.any { it.status == Status.FAILED }
     val busy = recipients.any { it.status == Status.PENDING || it.status == Status.SENDING }
@@ -69,7 +71,7 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long) -> Unit, onOpen: 
                     Text(self?.text ?: "—", style = MaterialTheme.typography.titleSmall)
                     if (r.status == Status.REQ_ACTIVE) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onCorrect(r.id) }, enabled = !busy) { Text("اصلاح") }
+                            Button(onClick = { onCorrect(r.id, isGold) }, enabled = !busy) { Text("اصلاح") }
                             OutlinedButton(onClick = { confirmCancel = true }, enabled = !busy) { Text("لغو") }
                         }
                     }
@@ -78,7 +80,7 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long) -> Unit, onOpen: 
             }
         }
         if (failed) item { Button(onClick = { vm.retry(id) }) { Text("ارسال مجدد ناموفق‌ها") } }
-        item { Text("پیامک‌های ارسال‌شده به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
+        item { Text(if (isGold) "وضعیت پیامک ارسال‌شده" else "پیامک‌های ارسال‌شده به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
         items(recipients, key = { it.id }) { RecipientRow(it, tag) }
         if (children.isNotEmpty()) {
             item { Text("اصلاح / لغو این درخواست", style = MaterialTheme.typography.titleSmall) }
