@@ -37,6 +37,7 @@ object Ring {
 
 object MessageText {
     const val CORRECTION_PREFIX = "\u2757\u2757 اصلاحیه" // ❗❗
+    const val NOTE_LABEL = "توضیحات: "
     const val CANCEL_PREFIX = "\u274C\u274C کنسلی" // ❌❌
 
     /**
@@ -54,7 +55,7 @@ object MessageText {
             Kind.CANCEL -> append(CANCEL_PREFIX).append('\n')
             Kind.ORIGINAL -> return
         }
-        if (note.isNotBlank()) append(note.trim()).append('\n')
+        if (note.isNotBlank()) append(NOTE_LABEL).append(note.trim()).append('\n')
     }
 }
 

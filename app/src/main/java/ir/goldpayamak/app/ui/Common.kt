@@ -108,7 +108,7 @@ fun ActionDialog(a: RequestEntity, msgs: List<MessageEntity>, onDismiss: () -> U
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("${Jalali.fromMillis(a.createdAt).format()}  ${Jalali.timeOf(a.createdAt)}", style = MaterialTheme.typography.labelMedium)
                 Text(plain(msg?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
-                if (a.note.isNotBlank()) Text("توضیحات: ${a.note}", style = MaterialTheme.typography.bodyMedium)
+                if (a.note.isNotBlank() && msg?.text?.contains(a.note) != true) Text("توضیحات: ${a.note}", style = MaterialTheme.typography.bodyMedium)
                 if (sent.isNotEmpty()) {
                     HorizontalDivider()
                     Text("وضعیت ارسال", style = MaterialTheme.typography.titleSmall)

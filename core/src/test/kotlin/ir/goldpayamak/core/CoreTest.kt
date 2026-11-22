@@ -38,7 +38,7 @@ class CoreTest {
     @Test fun bodyLayout() {
         assertEquals("جمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.ORIGINAL, "جمله", 120000))
         assertEquals("❗❗ اصلاحیه\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", 120000))
-        assertEquals("❗❗ اصلاحیه\nقیمت عوض شد\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", 120000, "  قیمت عوض شد "))
+        assertEquals("❗❗ اصلاحیه\nتوضیحات: قیمت عوض شد\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", 120000, "  قیمت عوض شد "))
         assertEquals("❌❌ کنسلی\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CANCEL, "جمله", 120000, " "))
         assertEquals("جمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.ORIGINAL, "جمله", 120000, "نباید بیاید"))
     }
@@ -112,7 +112,7 @@ class CoreTest {
         assertTrue(cancel.text.contains("ببخشید"))
         assertTrue(plan.filter { it.kind == Kind.CORRECTION }.all { it.text.contains("ببخشید") })
         assertTrue(plan.filter { it.kind == Kind.ORIGINAL }.none { it.text.contains("ببخشید") })
-        assertTrue(cancel.text.startsWith("❌❌ کنسلی\nببخشید\nD از C بگیر"))
+        assertTrue(cancel.text.startsWith("❌❌ کنسلی\nتوضیحات: ببخشید\nD از C بگیر"))
         assertEquals(5, plan.size) // ۴ نفر جدید (شامل خود کاربر) + ۱ لغو
         assertTrue(plan.any { it.isSelf })
     }
@@ -137,7 +137,7 @@ class CoreTest {
         assertEquals("بابت امیر فروختم به سینا ۶۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان", Gold.sentence("امیر", a))
         val b = a.copy(side = GoldSide.BUY, amount = 700000)
         assertEquals("بابت امیر خریدم به سینا ۷۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان", Gold.sentence("امیر", b))
-        assertEquals("❗❗ اصلاحیه\nمبلغ عوض شد\nبابت امیر خریدم به سینا ۷۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان",
+        assertEquals("❗❗ اصلاحیه\nتوضیحات: مبلغ عوض شد\nبابت امیر خریدم به سینا ۷۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان",
             Gold.correction("امیر", a, b, "مبلغ عوض شد").single().text)
         val c = Gold.cancel("امیر", a).single()
         assertEquals(Kind.CANCEL, c.kind)
