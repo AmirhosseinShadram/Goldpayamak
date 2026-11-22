@@ -73,7 +73,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val errors = Gold.validate(data)
     val plan = if (errors.isEmpty()) {
         if (parentId == null) Gold.original(vm.displayName, data)
-        else oldData?.let { Gold.correction(vm.displayName, it, data, note) }
+        else oldData?.let { Gold.correction(vm.displayName, data, note) }
     } else null
 
     fun doSend() {
@@ -103,7 +103,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (parentId != null) {
-            Text("اصلاحیه با پیشوند «اصلاحیه» برای گیرنده فرستاده می‌شود. اگر گیرنده را عوض کنید، گیرندهٔ قبلی پیام «کنسلی» می‌گیرد.", style = MaterialTheme.typography.bodySmall)
+            Text("فقط یک پیام اصلاحیه برای گیرندهٔ زیر فرستاده می‌شود. اگر گیرنده را عوض کنید، به گیرندهٔ قبلی پیامی نمی‌رود.", style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(note, { note = it }, label = { Text("توضیحات اصلاحیه (در پیامک هم می‌رود)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

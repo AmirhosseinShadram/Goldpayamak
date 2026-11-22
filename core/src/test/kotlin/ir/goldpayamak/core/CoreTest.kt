@@ -138,14 +138,16 @@ class CoreTest {
         val b = a.copy(side = GoldSide.BUY, amount = 700000)
         assertEquals("بابت امیر خریدم به سینا ۷۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان", Gold.sentence("امیر", b))
         assertEquals("❗❗ اصلاحیه\nتوضیحات: مبلغ عوض شد\nبابت امیر خریدم به سینا ۷۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان",
-            Gold.correction("امیر", a, b, "مبلغ عوض شد").single().text)
+            Gold.correction("امیر", b, "مبلغ عوض شد").single().text)
         val c = Gold.cancel("امیر", a).single()
         assertEquals(Kind.CANCEL, c.kind)
         assertTrue(c.text.startsWith("❌❌ کنسلی\nبابت امیر فروختم"))
-        // گیرندهٔ جدید: قبلی لغو، جدید پیام اصلی
+        // گیرندهٔ جدید: فقط یک اصلاحیه برای گیرندهٔ جدید، چیزی به قبلی نمی‌رود
         val other = b.copy(party = Party("رضا", "09122222222"))
-        val plan = Gold.correction("امیر", a, other)
-        assertEquals(listOf(Kind.ORIGINAL, Kind.CANCEL), plan.map { it.kind })
+        val plan = Gold.correction("امیر", other)
+        assertEquals(1, plan.size)
+        assertEquals(Kind.CORRECTION, plan.single().kind)
+        assertEquals("09122222222", plan.single().party.phone)
         assertTrue(Gold.validate(a.copy(amount = 0)).isNotEmpty())
         assertTrue(Gold.validate(a).isEmpty())
     }

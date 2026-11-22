@@ -46,7 +46,7 @@ class Repo(private val ctx: Context) {
         check(dao.childCount(parentId) == 0) { "فقط آخرین نسخه قابل اصلاح است" }
         val old = goldOf(parentId)
         return save(Kind.CORRECTION, parent, userName, listOf(new.party), new.amount,
-            Gold.correction(userName, old, new, note), "GOLD", new.rate, new.side.name, note.trim())
+            Gold.correction(userName, new, note), "GOLD", new.rate, new.side.name, note.trim())
     }
 
     suspend fun createCancel(parentId: Long, userName: String, note: String = ""): Long {

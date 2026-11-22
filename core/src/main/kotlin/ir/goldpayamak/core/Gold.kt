@@ -28,10 +28,9 @@ object Gold {
 
     fun cancel(userName: String, old: GoldData, note: String = "") = listOf(planned(userName, Kind.CANCEL, old, note))
 
-    /** اصلاحیه: اگر گیرنده همان باشد یک پیام اصلاحیه؛ اگر گیرنده عوض شده، گیرندهٔ قبلی «کنسلی» و گیرندهٔ جدید پیام اصلی می‌گیرد. */
-    fun correction(userName: String, old: GoldData, new: GoldData, note: String = ""): List<Planned> =
-        if (old.party.phone == new.party.phone) listOf(planned(userName, Kind.CORRECTION, new, note))
-        else listOf(planned(userName, Kind.ORIGINAL, new), planned(userName, Kind.CANCEL, old, note))
+    /** اصلاحیه: فقط یک پیام اصلاحیه به گیرندهٔ (احتمالاً جدید) فرستاده می‌شود؛ به گیرندهٔ قبلی چیزی نمی‌رود. */
+    fun correction(userName: String, new: GoldData, note: String = ""): List<Planned> =
+        listOf(planned(userName, Kind.CORRECTION, new, note))
 
     fun validate(d: GoldData): List<String> {
         val e = ArrayList<String>()
