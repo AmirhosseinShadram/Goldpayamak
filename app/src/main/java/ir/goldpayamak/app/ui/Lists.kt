@@ -74,8 +74,8 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
     val isGold = root.type == "GOLD"
     val byReq = remember(allMsgs) { allMsgs.groupBy { it.requestId } }
     val rootText = mainMessage(root, byReq[root.id])?.text
-    // وضعیت ارسال هر پیام، به تفکیک نسخه (جدیدترین بالا): پیام اول، اصلاحیه‌ها و کنسلی‌ها
-    val statusRows = chain.reversed().flatMap { v -> byReq[v.id].orEmpty().filter { it.status != Status.SELF } }
+    // وضعیت ارسال فقط برای پیام اول؛ وضعیت اصلاحیه‌ها و کنسلی‌ها داخل پاپ‌آپ خودشان است
+    val recipients = byReq[root.id].orEmpty().filter { it.status != Status.SELF }
     val failedReqs = allMsgs.filter { it.status == Status.FAILED }.map { it.requestId }.distinct()
     val busy = allMsgs.any { it.status == Status.PENDING || it.status == Status.SENDING }
     val red = MaterialTheme.colorScheme.error
@@ -102,7 +102,7 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
         }
         if (failedReqs.isNotEmpty()) item { Button(onClick = { failedReqs.forEach { vm.retry(it) } }) { Text("ارسال مجدد ناموفق‌ها") } }
         item { Text(if (isGold) "وضعیت ارسال" else "وضعیت ارسال به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
-        items(statusRows, key = { it.id }) { RecipientRow(it, isFirst = it.requestId == rootId) }
+        items(recipients, key = { it.id }) { RecipientRow(it) }
         if (actions.isNotEmpty()) {
             item { Text("کارهای انجام‌شده", style = MaterialTheme.typography.titleSmall) }
             item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(horizontal = 14.dp)) { ActionRows(actions) { shown = it } } } }
@@ -126,22 +126,13 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
     }
 }
 
-/** وضعیت ارسال یک پیام: نام، شماره، وضعیت همان پیام، و نوع پیام (پیام اول / اصلاحیه / کنسلی). */
+/** وضعیت ارسال یک طرف: نام، شماره و وضعیت (متن پیامک نمایش داده نمی‌شود). */
 @Composable
-private fun RecipientRow(m: ir.goldpayamak.app.data.MessageEntity, isFirst: Boolean) {
-    val label = if (isFirst) "پیام اول" else when (m.kind) { "CANCEL" -> "کنسلی"; "CORRECTION" -> "اصلاحیه"; else -> "پیام جدید" }
-    val color = if (isFirst) MaterialTheme.colorScheme.onSurfaceVariant else when (m.kind) {
-        "CANCEL" -> MaterialTheme.colorScheme.error
-        "CORRECTION" -> AmberColor
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
+private fun RecipientRow(m: ir.goldpayamak.app.data.MessageEntity) {
     Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.titleSmall)
-                Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
-            }
-            Text(label, color = color, style = MaterialTheme.typography.labelMedium)
+        Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.titleSmall)
+            Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
         }
     }
 }
