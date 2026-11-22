@@ -10,6 +10,9 @@ plugins {
 // آدرس سرور فعال‌سازی؛ هنگام ساخت: ./gradlew :app:assembleRelease -PactivationUrl=https://your-server
 val activationUrl = (project.findProperty("activationUrl") as String?) ?: "https://CHANGE-ME.invalid"
 
+// نسخهٔ دمو (بدون کد فعال‌سازی، فقط برای آزمایش): -PdemoMode=true
+val demoMode = (project.findProperty("demoMode") as String?) == "true"
+
 android {
     namespace = "ir.goldpayamak.app"
     compileSdk = 35
@@ -19,7 +22,10 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 3
-        versionName = "1.2"
+        versionName = if (demoMode) "1.2-demo" else "1.2"
+        buildConfigField("boolean", "DEMO", demoMode.toString())
+        if (demoMode) applicationIdSuffix = ".demo"
+        manifestPlaceholders["appLabel"] = if (demoMode) "گلدپیامک (دمو)" else "گلدپیامک"
         buildConfigField("String", "ACTIVATION_URL", "\"${activationUrl.trimEnd('/')}\"")
         // فقط اگر آدرس http (بدون TLS) داده شده باشد ترافیک متنی مجاز می‌شود
         manifestPlaceholders["cleartext"] = if (activationUrl.startsWith("http://")) "true" else "false"

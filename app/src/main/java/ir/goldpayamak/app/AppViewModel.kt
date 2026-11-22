@@ -45,6 +45,13 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     var activating by mutableStateOf(false)
 
+    /** فقط در نسخهٔ دمو: بدون کد فعال‌سازی */
+    fun activateDemo(name: String) {
+        prefs.markActivated(name)
+        displayName = prefs.displayName
+        isActivated = true
+    }
+
     /** اعتبارسنجی کد روی سرور؛ در صورت موفقیت نام ذخیره و برنامه برای همیشه (تا حذف برنامه) فعال می‌شود. */
     fun activate(name: String, code: String, onResult: (ActivationResult) -> Unit) {
         activating = true

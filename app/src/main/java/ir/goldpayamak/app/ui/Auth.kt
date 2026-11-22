@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ir.goldpayamak.app.AppViewModel
+import ir.goldpayamak.app.BuildConfig
 import ir.goldpayamak.app.data.ActivationResult
 import ir.goldpayamak.core.Digits
 
@@ -30,6 +31,14 @@ fun AuthScreen(vm: AppViewModel) {
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
     ) {
+        if (BuildConfig.DEMO) {
+            Text("نسخهٔ دمو", style = MaterialTheme.typography.headlineMedium)
+            Text("این نسخه فقط برای آزمایش است و کد فعال‌سازی نمی‌خواهد. پیامک‌ها واقعاً ارسال می‌شوند؛ برای تست از شماره‌های خودتان استفاده کنید.")
+            OutlinedTextField(name, { name = it }, label = { Text("نام شما (اول هر پیامک می‌آید)") },
+                singleLine = true, modifier = Modifier.fillMaxWidth())
+            Button(modifier = Modifier.fillMaxWidth(), enabled = name.isNotBlank(), onClick = { vm.activateDemo(name) }) { Text("ورود به دمو") }
+            return@Column
+        }
         Text("فعال‌سازی برنامه", style = MaterialTheme.typography.headlineMedium)
         Text("کد ۱۲ رقمی که به شما داده شده را وارد کنید. کد فقط یک بار قابل استفاده است و بعد از فعال‌سازی دیگر لازم نیست وارد شود (تا وقتی برنامه را حذف نکنید). برای فعال‌سازی به اینترنت نیاز است.",
             style = MaterialTheme.typography.bodyMedium)
