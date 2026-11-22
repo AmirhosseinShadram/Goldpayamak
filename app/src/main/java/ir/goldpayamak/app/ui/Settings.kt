@@ -75,7 +75,6 @@ fun SettingsScreen(vm: AppViewModel) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
             supportingText = { Text("برای جلوگیری از مسدود شدن توسط اپراتور، وقفه را زیاد کم نکنید.") })
         HorizontalDivider()
-        OutlinedButton(onClick = { vm.lock() }) { Text("قفل برنامه") }
         Text("توجه: گوشی باید روشن و برنامه باز باشد تا ارسال کامل شود. پیامک فارسی در هر بخش ۷۰ کاراکتر است و پیام طولانی چندبخشی حساب می‌شود.",
             style = MaterialTheme.typography.bodySmall)
     }

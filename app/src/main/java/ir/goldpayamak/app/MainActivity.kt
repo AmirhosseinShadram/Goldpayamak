@@ -25,7 +25,7 @@ class MainActivity : ComponentActivity() {
             )) {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Surface(Modifier.fillMaxSize()) {
-                        if (!vm.unlocked) AuthScreen(vm) else MainShell(vm)
+                        if (!vm.isActivated) AuthScreen(vm) else MainShell(vm)
                         vm.errorMsg?.let { m ->
                             AlertDialog(
                                 onDismissRequest = { vm.errorMsg = null },

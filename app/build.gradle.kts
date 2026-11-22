@@ -7,6 +7,9 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+// آدرس سرور فعال‌سازی؛ هنگام ساخت: ./gradlew :app:assembleRelease -PactivationUrl=https://your-server
+val activationUrl = (project.findProperty("activationUrl") as String?) ?: "https://CHANGE-ME.invalid"
+
 android {
     namespace = "ir.goldpayamak.app"
     compileSdk = 35
@@ -15,8 +18,11 @@ android {
         applicationId = "ir.goldpayamak.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1"
+        versionCode = 3
+        versionName = "1.2"
+        buildConfigField("String", "ACTIVATION_URL", "\"${activationUrl.trimEnd('/')}\"")
+        // فقط اگر آدرس http (بدون TLS) داده شده باشد ترافیک متنی مجاز می‌شود
+        manifestPlaceholders["cleartext"] = if (activationUrl.startsWith("http://")) "true" else "false"
     }
 
     // کلید امضای ثابت: اگر هر بار کلید جدید ساخته شود، اندروید اجازهٔ بروزرسانی روی نسخهٔ قبلی را نمی‌دهد
@@ -45,7 +51,7 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlin { compilerOptions { jvmTarget.set(JvmTarget.JVM_17) } }
-    buildFeatures { compose = true }
+    buildFeatures { compose = true; buildConfig = true }
 }
 
 ksp { arg("room.schemaLocation", "$projectDir/schemas") }

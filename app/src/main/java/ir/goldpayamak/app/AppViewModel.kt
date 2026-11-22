@@ -21,8 +21,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     val repo = Repo(app)
     val dao get() = repo.dao
 
-    var isSetUp by mutableStateOf(prefs.isSetUp)
-    var unlocked by mutableStateOf(false)
+    var isActivated by mutableStateOf(prefs.isActivated)
     var displayName by mutableStateOf(prefs.displayName)
 
     val contacts = dao.contacts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -44,29 +43,22 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun setup(name: String, code: String) {
-        prefs.displayName = name
-        prefs.setCode(code)
-        displayName = prefs.displayName
-        isSetUp = true
-        unlocked = true
+    var activating by mutableStateOf(false)
+
+    /** اعتبارسنجی کد روی سرور؛ در صورت موفقیت نام ذخیره و برنامه برای همیشه (تا حذف برنامه) فعال می‌شود. */
+    fun activate(name: String, code: String, onResult: (ActivationResult) -> Unit) {
+        activating = true
+        viewModelScope.launch {
+            val r = Activation.activate(app, code)
+            if (r is ActivationResult.Ok) {
+                prefs.markActivated(name)
+                displayName = prefs.displayName
+                isActivated = true
+            }
+            activating = false
+            onResult(r)
+        }
     }
-
-    private var failedAttempts = 0
-    private var lockedUntil = 0L
-
-    /** ثانیه‌های باقی‌ماندهٔ قفل پس از تلاش‌های ناموفق (۰ یعنی آزاد) */
-    fun lockoutSeconds(): Int = ((lockedUntil - System.currentTimeMillis()) / 1000).toInt().coerceAtLeast(0)
-
-    fun login(code: String): Boolean {
-        if (lockoutSeconds() > 0) return false
-        val ok = prefs.checkCode(code)
-        if (ok) { failedAttempts = 0; unlocked = true }
-        else if (++failedAttempts % 5 == 0) lockedUntil = System.currentTimeMillis() + 30_000L
-        return ok
-    }
-
-    fun lock() { unlocked = false }
 
     fun saveName(n: String) { prefs.displayName = n; displayName = prefs.displayName }
 
