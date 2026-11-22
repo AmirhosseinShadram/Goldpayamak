@@ -56,6 +56,8 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         }
     }
 
+    LaunchedEffect(vm.errorMsg) { if (vm.errorMsg != null) sending = false }
+
     val pickContact = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
         val uri = r.data?.data
         val slot = pickTarget
@@ -85,20 +87,30 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         else oldRing?.let { Planner.correction(vm.displayName, it, oldPrice, ring, price) }
     } else null
 
+    var simChoices by remember { mutableStateOf<List<Sim>?>(null) }
+
     fun doSend() {
         val p = price ?: return
         sending = true
         if (parentId == null) vm.sendNew(ring, p, onDone) else vm.sendCorrection(parentId, ring, p, onDone)
     }
 
+    // گوشی دو‌سیم‌کارته بدون سیم پیش‌فرض پیامک: قبل از ارسال از کاربر می‌پرسیم (انتخاب در تنظیمات ذخیره می‌شود)
+    fun sendOrAskSim() {
+        val sims = listSims(ctx)
+        val defaultSms = if (Build.VERSION.SDK_INT >= 24) android.telephony.SubscriptionManager.getDefaultSmsSubscriptionId() else -1
+        val noDefault = defaultSms == android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID
+        if (vm.prefs.subId == -1 && sims.size >= 2 && noDefault) simChoices = sims else doSend()
+    }
+
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
-        if (res[Manifest.permission.SEND_SMS] == true) doSend()
+        if (res[Manifest.permission.SEND_SMS] == true) sendOrAskSim()
         else { permMsg = "برای ارسال پیامک مجوز «پیامک» لازم است."; sending = false }
     }
 
     fun requestSend() {
         val smsOk = ContextCompat.checkSelfPermission(ctx, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
-        if (smsOk) doSend() else {
+        if (smsOk) sendOrAskSim() else {
             val perms = buildList {
                 add(Manifest.permission.SEND_SMS); add(Manifest.permission.READ_PHONE_STATE)
                 if (Build.VERSION.SDK_INT >= 33) add(Manifest.permission.POST_NOTIFICATIONS)
@@ -181,6 +193,24 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             text = { Text("$n پیامک از سیم‌کارت این گوشی ارسال می‌شود (هزینه از اعتبار سیم‌کارت شما کم می‌شود). ادامه می‌دهید؟") },
             confirmButton = { TextButton(onClick = { confirm = false; requestSend() }) { Text("ارسال") } },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text("انصراف") } },
+        )
+    }
+
+    simChoices?.let { sims ->
+        AlertDialog(
+            onDismissRequest = { simChoices = null },
+            title = { Text("ارسال با کدام سیم‌کارت؟") },
+            text = {
+                Column {
+                    sims.forEach { s ->
+                        TextButton(onClick = { vm.prefs.subId = s.subId; simChoices = null; doSend() }, Modifier.fillMaxWidth()) {
+                            Text(s.label, Modifier.fillMaxWidth())
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = { TextButton(onClick = { simChoices = null }) { Text("انصراف") } },
         )
     }
 

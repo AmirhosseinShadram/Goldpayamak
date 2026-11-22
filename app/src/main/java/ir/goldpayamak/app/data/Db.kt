@@ -166,7 +166,7 @@ interface AppDao {
     suspend fun resetFailed(rid: Long, t: Long)
 
     /** پیام‌هایی که از اجرای قبلی در حالت «در حال ارسال» مانده‌اند (مثلاً برنامه بسته شده) */
-    @Query("UPDATE messages SET status = 'FAILED' WHERE status IN ('SENDING') AND updatedAt < :before")
+    @Query("UPDATE messages SET status = 'FAILED' WHERE status IN ('SENDING', 'PENDING') AND updatedAt < :before")
     suspend fun failStale(before: Long)
 }
 

@@ -19,7 +19,17 @@ import androidx.core.content.ContextCompat
 import ir.goldpayamak.app.AppViewModel
 import ir.goldpayamak.core.Digits
 
-private data class Sim(val subId: Int, val label: String)
+data class Sim(val subId: Int, val label: String)
+
+/** سیم‌کارت‌های فعال؛ نیاز به مجوز READ_PHONE_STATE دارد (بدون مجوز لیست خالی). */
+fun listSims(ctx: android.content.Context): List<Sim> {
+    if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) return emptyList()
+    return try {
+        ctx.getSystemService(SubscriptionManager::class.java).activeSubscriptionInfoList.orEmpty().map {
+            Sim(it.subscriptionId, "سیم ${Digits.toPersian((it.simSlotIndex + 1).toString())}: ${it.displayName} ${it.number.orEmpty()}".trim())
+        }
+    } catch (e: SecurityException) { emptyList() }
+}
 
 @Composable
 fun SettingsScreen(vm: AppViewModel) {
@@ -35,11 +45,7 @@ fun SettingsScreen(vm: AppViewModel) {
             needPerm = true; return
         }
         needPerm = false
-        sims = try {
-            ctx.getSystemService(SubscriptionManager::class.java).activeSubscriptionInfoList.orEmpty().map {
-                Sim(it.subscriptionId, "سیم ${Digits.toPersian((it.simSlotIndex + 1).toString())}: ${it.displayName} ${it.number.orEmpty()}".trim())
-            }
-        } catch (e: SecurityException) { emptyList() }
+        sims = listSims(ctx)
     }
     val perm = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { loadSims() }
     LaunchedEffect(Unit) { loadSims() }

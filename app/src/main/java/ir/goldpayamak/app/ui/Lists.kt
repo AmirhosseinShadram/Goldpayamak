@@ -42,9 +42,10 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
 
 @Composable
 fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long) -> Unit, onOpen: (Long) -> Unit) {
-    val req by vm.dao.request(id).collectAsState(initial = null)
+    val req by remember(id) { vm.dao.request(id) }.collectAsState(initial = null)
     val rootId = req?.rootId
-    val msgs by (if (rootId != null) vm.dao.messagesOfRoot(rootId) else vm.dao.messagesOf(id)).collectAsState(initial = emptyList())
+    val msgs by remember(id, rootId) { if (rootId != null) vm.dao.messagesOfRoot(rootId) else vm.dao.messagesOf(id) }
+        .collectAsState(initial = emptyList())
     var confirmCancel by remember { mutableStateOf(false) }
     val r = req
     if (r == null) { EmptyHint("..."); return }
@@ -83,7 +84,7 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long) -> Unit, onOpen: 
 
 @Composable
 fun ContactHistoryScreen(vm: AppViewModel, phone: String) {
-    val msgs by vm.dao.messagesOfPhone(phone).collectAsState(initial = emptyList())
+    val msgs by remember(phone) { vm.dao.messagesOfPhone(phone) }.collectAsState(initial = emptyList())
     if (msgs.isEmpty()) { EmptyHint("برای این مخاطب پیامی ثبت نشده است."); return }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         items(msgs) { MessageCard(it) }

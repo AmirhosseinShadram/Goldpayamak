@@ -26,6 +26,14 @@ class MainActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     Surface(Modifier.fillMaxSize()) {
                         if (!vm.unlocked) AuthScreen(vm) else MainShell(vm)
+                        vm.errorMsg?.let { m ->
+                            AlertDialog(
+                                onDismissRequest = { vm.errorMsg = null },
+                                title = { Text("خطا") },
+                                text = { Text(m) },
+                                confirmButton = { TextButton(onClick = { vm.errorMsg = null }) { Text("باشه") } },
+                            )
+                        }
                     }
                 }
             }

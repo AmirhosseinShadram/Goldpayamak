@@ -30,8 +30,10 @@ class SendService : Service() {
         val rid = intent?.getLongExtra(EXTRA_REQUEST, -1L) ?: -1L
         if (rid < 0) { stopSelf(startId); return START_NOT_STICKY }
         synchronized(running) { if (!running.add(rid)) return START_NOT_STICKY }
+        active.incrementAndGet()
         scope.launch {
             try { process(rid) } finally {
+                active.decrementAndGet()
                 synchronized(running) { running.remove(rid) }
                 if (synchronized(running) { running.isEmpty() }) stopSelf()
             }
@@ -110,6 +112,9 @@ class SendService : Service() {
         const val ACTION_DELIVERED = "ir.goldpayamak.app.SMS_DELIVERED"
         private const val CHANNEL = "send"
         private const val NOTIF_ID = 17
+
+        /** تعداد درخواست‌هایی که همین حالا در حال ارسال‌اند (برای تشخیص پیام‌های رهاشده) */
+        val active = java.util.concurrent.atomic.AtomicInteger(0)
 
         fun start(ctx: Context, requestId: Long) {
             val i = Intent(ctx, SendService::class.java).putExtra(EXTRA_REQUEST, requestId)

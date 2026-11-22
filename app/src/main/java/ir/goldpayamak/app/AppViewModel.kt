@@ -28,9 +28,20 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     val contacts = dao.contacts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val requests = dao.requests().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** پیام خطای قابل‌نمایش به کاربر */
+    var errorMsg by mutableStateOf<String?>(null)
+
+    private fun guarded(block: suspend () -> Unit) = viewModelScope.launch {
+        try { block() } catch (e: Exception) {
+            errorMsg = e.message?.takeIf { it.any { c -> c in '\u0600'..'\u06FF' } } ?: "خطا در انجام عملیات. دوباره تلاش کنید."
+        }
+    }
+
     init {
-        // پیام‌هایی که اجرای قبلی نیمه‌کاره رها کرده بود شکست‌خورده حساب می‌شوند (قابل ارسال مجدد)
-        viewModelScope.launch(Dispatchers.IO) { dao.failStale(System.currentTimeMillis() - 5 * 60_000L) }
+        // پیام‌هایی که اجرای قبلی نیمه‌کاره رها کرده بود (برنامه بسته شده) شکست‌خورده حساب می‌شوند تا قابل ارسال مجدد باشند.
+        viewModelScope.launch(Dispatchers.IO) {
+            if (SendService.active.get() == 0) dao.failStale(System.currentTimeMillis() - 60_000L)
+        }
     }
 
     fun setup(name: String, user: String, pass: String) {
@@ -52,25 +63,25 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun saveName(n: String) { prefs.displayName = n; displayName = prefs.displayName }
 
     // ---- درخواست‌ها ----
-    fun sendNew(ring: List<Party>, price: Long, onDone: (Long) -> Unit) = viewModelScope.launch {
+    fun sendNew(ring: List<Party>, price: Long, onDone: (Long) -> Unit) = guarded {
         val id = repo.createOriginal(displayName, ring, price)
         SendService.start(app, id)
         onDone(id)
     }
 
-    fun sendCorrection(parentId: Long, ring: List<Party>, price: Long, onDone: (Long) -> Unit) = viewModelScope.launch {
+    fun sendCorrection(parentId: Long, ring: List<Party>, price: Long, onDone: (Long) -> Unit) = guarded {
         val id = repo.createCorrection(parentId, displayName, ring, price)
         SendService.start(app, id)
         onDone(id)
     }
 
-    fun cancel(parentId: Long, onDone: (Long) -> Unit) = viewModelScope.launch {
+    fun cancel(parentId: Long, onDone: (Long) -> Unit) = guarded {
         val id = repo.createCancel(parentId, displayName)
         SendService.start(app, id)
         onDone(id)
     }
 
-    fun retry(requestId: Long) = viewModelScope.launch {
+    fun retry(requestId: Long) = guarded {
         dao.resetFailed(requestId, System.currentTimeMillis())
         SendService.start(app, requestId)
     }
@@ -79,12 +90,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     suspend fun requestOnce(id: Long) = dao.requestOnce(id)
 
     // ---- مخاطبین ----
-    fun saveContact(c: ContactEntity?, name: String, phone: String) = viewModelScope.launch {
+    fun saveContact(c: ContactEntity?, name: String, phone: String) = guarded {
+        val existing = dao.contactByPhone(phone)
+        if (existing != null && existing.id != c?.id) error("این شماره قبلاً برای «${existing.name}» ذخیره شده است.")
         if (c == null) dao.insertContactIgnore(ContactEntity(name = name.trim(), phone = phone))
         else dao.updateContact(c.copy(name = name.trim(), phone = phone))
     }
 
-    fun deleteContact(c: ContactEntity) = viewModelScope.launch { dao.deleteContact(c) }
+    fun deleteContact(c: ContactEntity) = guarded { dao.deleteContact(c) }
 
     // ---- گزارش ----
     fun exportCsv(uri: Uri, from: Long, to: Long, onDone: (Boolean) -> Unit) = viewModelScope.launch {
@@ -134,5 +147,6 @@ fun statusLabel(s: String) = when (s) {
     Status.REQ_ACTIVE -> "فعال"
     Status.REQ_SUPERSEDED -> "اصلاح شده"
     Status.REQ_CANCELLED -> "لغو شده"
+    Status.REQ_RECORD -> "ثبت شد"
     else -> s
 }
