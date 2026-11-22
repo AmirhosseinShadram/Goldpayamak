@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.Goldpayamak" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
