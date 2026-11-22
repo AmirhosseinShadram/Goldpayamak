@@ -15,6 +15,8 @@ import androidx.compose.ui.unit.dp
 import ir.goldpayamak.app.AppViewModel
 import ir.goldpayamak.app.data.ContactEntity
 import ir.goldpayamak.app.data.Status
+import ir.goldpayamak.app.data.requestStateLabel
+import ir.goldpayamak.app.data.supersededTag
 import ir.goldpayamak.app.statusLabel
 import ir.goldpayamak.core.Jalali
 import ir.goldpayamak.core.Phone
@@ -23,17 +25,19 @@ import ir.goldpayamak.core.Price
 @Composable
 fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
     val list by vm.requests.collectAsState()
+    val selfs by vm.selfMessages.collectAsState()
+    val selfByReq = remember(selfs) { selfs.associateBy { it.requestId } }
     if (list.isEmpty()) { EmptyHint("هنوز درخواستی ثبت نشده است."); return }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(list) { r ->
+        items(list, key = { it.id }) { r ->
             Card(Modifier.fillMaxWidth().clickable { onOpen(r.id) }) {
-                Column(Modifier.padding(12.dp)) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.titleSmall)
-                        Text(if (r.kind == "CORRECTION") "اصلاحیه • ${statusLabel(r.status)}" else statusLabel(r.status),
-                            color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
+                        Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
+                        Text(requestStateLabel(r), color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
                     }
-                    Text("قیمت: ${Price.format(r.price)}", style = MaterialTheme.typography.bodyMedium)
+                    // متن پیام طرف ۲ (خود کاربر)؛ با زدن روی آن می‌شود اصلاح یا لغو کرد
+                    Text(selfByReq[r.id]?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -43,34 +47,49 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
 @Composable
 fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long) -> Unit, onOpen: (Long) -> Unit) {
     val req by remember(id) { vm.dao.request(id) }.collectAsState(initial = null)
-    val rootId = req?.rootId
-    val msgs by remember(id, rootId) { if (rootId != null) vm.dao.messagesOfRoot(rootId) else vm.dao.messagesOf(id) }
-        .collectAsState(initial = emptyList())
+    val msgs by remember(id) { vm.dao.messagesOf(id) }.collectAsState(initial = emptyList())
+    val children by remember(id) { vm.dao.children(id) }.collectAsState(initial = emptyList())
     var confirmCancel by remember { mutableStateOf(false) }
     val r = req
     if (r == null) { EmptyHint("..."); return }
-    val own = msgs.filter { it.requestId == id }
-    val failed = own.any { it.status == Status.FAILED }
-    val busy = own.any { it.status == Status.PENDING || it.status == Status.SENDING }
+    val self = msgs.firstOrNull { it.status == Status.SELF }
+    val recipients = msgs.filter { it.status != Status.SELF }
+    val failed = recipients.any { it.status == Status.FAILED }
+    val busy = recipients.any { it.status == Status.PENDING || it.status == Status.SENDING }
+    val tag = supersededTag(r)
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            Text("وضعیت: ${statusLabel(r.status)} • قیمت ${Price.format(r.price)}", style = MaterialTheme.typography.titleMedium)
-            Text("${Jalali.fromMillis(r.createdAt).format()} ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.bodySmall)
-        }
-        if (r.status == Status.REQ_ACTIVE) item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = { onCorrect(r.id) }, enabled = !busy) { Text("اصلاحیه") }
-                OutlinedButton(onClick = { confirmCancel = true }, enabled = !busy) { Text("لغو") }
+            Card(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
+                        Text(requestStateLabel(r), color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
+                    }
+                    Text(self?.text ?: "—", style = MaterialTheme.typography.titleSmall)
+                    if (r.status == Status.REQ_ACTIVE) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = { onCorrect(r.id) }, enabled = !busy) { Text("اصلاح") }
+                            OutlinedButton(onClick = { confirmCancel = true }, enabled = !busy) { Text("لغو") }
+                        }
+                    }
+                    if (r.parentId != null) TextButton(onClick = { onOpen(r.parentId) }) { Text("مشاهدهٔ نسخهٔ قبلی") }
+                }
             }
         }
         if (failed) item { Button(onClick = { vm.retry(id) }) { Text("ارسال مجدد ناموفق‌ها") } }
-        item { Text("پیامک‌های همین ثبت", style = MaterialTheme.typography.titleSmall) }
-        items(own) { MessageCard(it) }
-        val others = msgs.filter { it.requestId != id }
-        if (others.isNotEmpty()) {
-            item { Text("سایر نسخه‌های این درخواست (اصلی/اصلاحیه/لغو)", style = MaterialTheme.typography.titleSmall) }
-            items(others) { MessageCard(it, showText = false) }
+        item { Text("پیامک‌های ارسال‌شده به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
+        items(recipients, key = { it.id }) { RecipientRow(it, tag) }
+        if (children.isNotEmpty()) {
+            item { Text("اصلاح / لغو این درخواست", style = MaterialTheme.typography.titleSmall) }
+            items(children, key = { it.id }) { c ->
+                Card(Modifier.fillMaxWidth().clickable { onOpen(c.id) }) {
+                    Row(Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(if (c.kind == "CANCEL") "لغو" else "اصلاحیه", style = MaterialTheme.typography.titleSmall)
+                        Text("${Jalali.fromMillis(c.createdAt).format()}  ${Jalali.timeOf(c.createdAt)}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
         }
     }
     if (confirmCancel) AlertDialog(
@@ -80,6 +99,21 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long) -> Unit, onOpen: 
         confirmButton = { TextButton(onClick = { confirmCancel = false; vm.cancel(id) { onOpen(it) } }) { Text("لغو و ارسال") } },
         dismissButton = { TextButton(onClick = { confirmCancel = false }) { Text("انصراف") } },
     )
+}
+
+/** پیامک یک طرف: نام، شماره و وضعیت؛ با زدن، متن پیامک باز می‌شود. */
+@Composable
+private fun RecipientRow(m: ir.goldpayamak.app.data.MessageEntity, tag: String?) {
+    var open by remember { mutableStateOf(false) }
+    Card(Modifier.fillMaxWidth().clickable { open = !open }) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.titleSmall)
+                Text(statusLabel(m.status) + (tag?.let { " • $it" } ?: ""), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
+            }
+            if (open) Text(m.text, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
 }
 
 @Composable

@@ -6,6 +6,12 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -19,6 +25,9 @@ sealed interface Screen {
 }
 
 private val tabs = listOf("درخواست جدید", "تاریخچه", "مخاطبین", "گزارش", "تنظیمات")
+private val tabIcons: List<ImageVector> = listOf(
+    Icons.Filled.AddCircle, Icons.AutoMirrored.Filled.List, Icons.Filled.Person, Icons.Filled.DateRange, Icons.Filled.Settings,
+)
 
 @Composable
 fun MainShell(vm: AppViewModel) {
@@ -60,7 +69,7 @@ fun MainShell(vm: AppViewModel) {
             NavigationBar {
                 tabs.forEachIndexed { i, t ->
                     NavigationBarItem(selected = tab == i, onClick = { tab = i },
-                        icon = { Text(t.take(1)) }, label = { Text(t, maxLines = 1, style = MaterialTheme.typography.labelSmall) })
+                        icon = { Icon(tabIcons[i], contentDescription = t) }, label = { Text(t, maxLines = 1, style = MaterialTheme.typography.labelSmall) })
                 }
             }
         },

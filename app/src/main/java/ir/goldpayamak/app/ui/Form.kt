@@ -83,8 +83,8 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val price = Price.parse(priceText)
     val errors = Planner.validate(ring) + (if (price == null) listOf("قیمت را به عدد (بزرگ‌تر از صفر) وارد کنید") else emptyList())
     val plan = if (errors.isEmpty() && price != null) {
-        if (parentId == null) Planner.original(vm.displayName, ring, price)
-        else oldRing?.let { Planner.correction(vm.displayName, it, oldPrice, ring, price) }
+        if (parentId == null) Planner.original(ring, price)
+        else oldRing?.let { Planner.correction(it, oldPrice, ring, price) }
     } else null
 
     var simChoices by remember { mutableStateOf<List<Sim>?>(null) }

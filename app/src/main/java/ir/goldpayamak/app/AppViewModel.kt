@@ -25,6 +25,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     var displayName by mutableStateOf(prefs.displayName)
 
     val contacts = dao.contacts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    val selfMessages = dao.selfMessages().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val requests = dao.requests().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /** پیام خطای قابل‌نمایش به کاربر */
@@ -107,6 +108,19 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun deleteContact(c: ContactEntity) = guarded { dao.deleteContact(c) }
 
     // ---- گزارش ----
+    fun exportPdf(uri: Uri, from: Long, to: Long, fromText: String, toText: String, onDone: (Boolean) -> Unit) = viewModelScope.launch {
+        val ok = withContext(Dispatchers.IO) {
+            try {
+                val groups = groupReport(dao.requestsBetweenOnce(from, to), dao.messagesBetweenOnce(from, to))
+                app.contentResolver.openOutputStream(uri, "wt")!!.use {
+                    ir.goldpayamak.app.ui.PdfReport.write(it, displayName, fromText, toText, groups)
+                }
+                true
+            } catch (e: Exception) { false }
+        }
+        onDone(ok)
+    }
+
     fun exportCsv(uri: Uri, from: Long, to: Long, onDone: (Boolean) -> Unit) = viewModelScope.launch {
         val ok = withContext(Dispatchers.IO) {
             try {

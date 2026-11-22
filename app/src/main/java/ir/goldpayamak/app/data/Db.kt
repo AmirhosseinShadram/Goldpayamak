@@ -102,6 +102,19 @@ interface AppDao {
     @Query("SELECT * FROM requests WHERE kind != 'CANCEL' ORDER BY createdAt DESC, id DESC")
     fun requests(): Flow<List<RequestEntity>>
 
+    /** پیام طرف ۲ (ثبت‌شده، ارسال‌نشده) همهٔ درخواست‌ها برای نمایش در تاریخچه */
+    @Query("SELECT * FROM messages WHERE status = 'SELF'")
+    fun selfMessages(): Flow<List<MessageEntity>>
+
+    @Query("SELECT * FROM requests WHERE parentId = :id ORDER BY createdAt, id")
+    fun children(id: Long): Flow<List<RequestEntity>>
+
+    @Query("SELECT * FROM requests WHERE createdAt BETWEEN :from AND :to ORDER BY createdAt DESC, id DESC")
+    fun requestsBetween(from: Long, to: Long): Flow<List<RequestEntity>>
+
+    @Query("SELECT * FROM requests WHERE createdAt BETWEEN :from AND :to ORDER BY createdAt DESC, id DESC")
+    suspend fun requestsBetweenOnce(from: Long, to: Long): List<RequestEntity>
+
     @Query("SELECT * FROM requests WHERE id = :id")
     fun request(id: Long): Flow<RequestEntity?>
 

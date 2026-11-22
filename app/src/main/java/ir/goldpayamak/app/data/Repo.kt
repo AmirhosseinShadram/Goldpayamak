@@ -18,14 +18,14 @@ class Repo(private val ctx: Context) {
 
     /** درخواست جدید (اصلی) */
     suspend fun createOriginal(userName: String, ring: List<Party>, price: Long): Long =
-        save(Kind.ORIGINAL, null, userName, ring, price, Planner.original(userName, ring, price))
+        save(Kind.ORIGINAL, null, userName, ring, price, Planner.original(ring, price))
 
     /** اصلاحیه روی آخرین نسخهٔ فعال */
     suspend fun createCorrection(parentId: Long, userName: String, newRing: List<Party>, newPrice: Long): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
         check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل اصلاح است" }
         val oldRing = ringOf(parentId)
-        val plan = Planner.correction(userName, oldRing, parent.price, newRing, newPrice)
+        val plan = Planner.correction(oldRing, parent.price, newRing, newPrice)
         return save(Kind.CORRECTION, parent, userName, newRing, newPrice, plan)
     }
 
@@ -33,7 +33,7 @@ class Repo(private val ctx: Context) {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
         check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل لغو است" }
         val ring = ringOf(parentId)
-        return save(Kind.CANCEL, parent, userName, ring, parent.price, Planner.cancel(userName, ring, parent.price))
+        return save(Kind.CANCEL, parent, userName, ring, parent.price, Planner.cancel(ring, parent.price))
     }
 
     private suspend fun save(

@@ -2,6 +2,7 @@ package ir.goldpayamak.app.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,9 +11,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import ir.goldpayamak.app.AppViewModel
-import ir.goldpayamak.app.data.Status
+import ir.goldpayamak.app.data.*
+import ir.goldpayamak.app.statusLabel
+import ir.goldpayamak.core.Digits
 import ir.goldpayamak.core.JDate
 import ir.goldpayamak.core.Jalali
+import ir.goldpayamak.core.Price
 import java.time.LocalDate
 
 @Composable
@@ -25,11 +29,17 @@ fun ReportScreen(vm: AppViewModel) {
     val valid = from != null && to != null && Jalali.startOfDayMillis(from) <= Jalali.endOfDayMillis(to)
     val fromMs = if (valid) Jalali.startOfDayMillis(from!!) else 0L
     val toMs = if (valid) Jalali.endOfDayMillis(to!!) else -1L
+    val reqs by remember(fromMs, toMs) { vm.dao.requestsBetween(fromMs, toMs) }.collectAsState(initial = emptyList())
     val msgs by remember(fromMs, toMs) { vm.dao.messagesBetween(fromMs, toMs) }.collectAsState(initial = emptyList())
+    val groups = remember(reqs, msgs) { groupReport(reqs, msgs) }
     var exportMsg by remember { mutableStateOf<String?>(null) }
+    val fileSuffix = Digits.toLatin("${fromText}_${toText}").replace('/', '-')
 
-    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
-        if (uri != null) vm.exportCsv(uri, fromMs, toMs) { ok -> exportMsg = if (ok) "فایل ذخیره شد." else "ذخیره فایل ناموفق بود." }
+    val exportPdf = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/pdf")) { uri ->
+        if (uri != null) vm.exportPdf(uri, fromMs, toMs, fromText, toText) { ok -> exportMsg = if (ok) "فایل PDF ذخیره شد." else "ذخیرهٔ PDF ناموفق بود." }
+    }
+    val exportCsv = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+        if (uri != null) vm.exportCsv(uri, fromMs, toMs) { ok -> exportMsg = if (ok) "فایل CSV ذخیره شد." else "ذخیرهٔ CSV ناموفق بود." }
     }
 
     fun setRange(daysBack: Int?) {
@@ -57,18 +67,48 @@ fun ReportScreen(vm: AppViewModel) {
         }
         if (!valid) item { Text("تاریخ‌ها را به شکل ۱۴۰۵/۰۹/۰۱ وارد کنید و تاریخ شروع قبل از پایان باشد.", color = MaterialTheme.colorScheme.error) }
         item {
-            val sent = msgs.count { it.status == Status.SENT || it.status == Status.DELIVERED }
-            val failed = msgs.count { it.status == Status.FAILED }
-            val reqs = msgs.map { it.requestId }.toSet().size
-            Text("${ir.goldpayamak.core.Digits.toPersian(msgs.size.toString())} پیام در ${ir.goldpayamak.core.Digits.toPersian(reqs.toString())} ثبت • " +
-                "ارسال‌شده ${ir.goldpayamak.core.Digits.toPersian(sent.toString())} • ناموفق ${ir.goldpayamak.core.Digits.toPersian(failed.toString())}",
+            val rec = groups.flatMap { it.recipients }
+            val sent = rec.count { it.status == Status.SENT || it.status == Status.DELIVERED }
+            val failed = rec.count { it.status == Status.FAILED }
+            Text("${Digits.toPersian(groups.size.toString())} ثبت • ${Digits.toPersian(rec.size.toString())} پیامک به طرف‌ها • " +
+                "ارسال‌شده ${Digits.toPersian(sent.toString())} • ناموفق ${Digits.toPersian(failed.toString())}",
                 style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(8.dp))
-            Button(enabled = valid && msgs.isNotEmpty(), onClick = {
-                export.launch("report-${fromText.replace('/', '-')}_${toText.replace('/', '-')}.csv".let { ir.goldpayamak.core.Digits.toLatin(it) })
-            }) { Text("دانلود گزارش (CSV / Excel)") }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(enabled = valid && groups.isNotEmpty(), onClick = { exportPdf.launch("report-$fileSuffix.pdf") }) { Text("دانلود PDF") }
+                OutlinedButton(enabled = valid && groups.isNotEmpty(), onClick = { exportCsv.launch("report-$fileSuffix.csv") }) { Text("CSV (Excel)") }
+            }
             exportMsg?.let { Text(it) }
+            Text("روی هر مورد بزنید تا پیامک‌های ارسال‌شده به طرف‌ها و وضعیتشان نمایش داده شود.", style = MaterialTheme.typography.bodySmall)
         }
-        items(msgs) { MessageCard(it) }
+        items(groups, key = { it.request.id }) { g -> ReportGroupCard(g) }
+    }
+}
+
+@Composable
+private fun ReportGroupCard(g: ReportGroup) {
+    var open by remember { mutableStateOf(false) }
+    val r = g.request
+    Card(Modifier.fillMaxWidth().clickable { open = !open }) {
+        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
+                Text(requestStateLabel(r), style = MaterialTheme.typography.labelMedium, color = statusColor(r.status))
+            }
+            Text(g.self?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
+            Text(if (open) "▲ پیامک‌های ارسال‌شده به طرف‌ها (${Digits.toPersian(g.recipients.size.toString())})"
+                else "▼ ${Digits.toPersian(g.recipients.size.toString())} پیامک به طرف‌ها",
+                style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+            if (open) {
+                val tag = supersededTag(r)
+                g.recipients.forEach { m ->
+                    HorizontalDivider()
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
+                        Text(statusLabel(m.status) + (tag?.let { " • $it" } ?: ""), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+            }
+        }
     }
 }
