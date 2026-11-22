@@ -162,7 +162,24 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                 supportingText = { price?.let { Text(Price.format(it)) } })
         }
         if (errors.isNotEmpty()) item { errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
-        permMsg?.let { m -> item { Text(m, color = MaterialTheme.colorScheme.error) } }
+        permMsg?.let { m ->
+            item {
+                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(m, style = MaterialTheme.typography.titleSmall)
+                        Text("اگر اندروید پیام «App was denied access to SMS» نشان داد (برنامه‌هایی که با APK نصب شده‌اند):\n" +
+                            "۱) دکمهٔ زیر را بزنید تا صفحهٔ اطلاعات برنامه باز شود.\n" +
+                            "۲) بالا سمت راست سه نقطه (⋮) را بزنید و «Allow restricted settings» را انتخاب کنید.\n" +
+                            "۳) مجوزها ← پیامک (SMS) ← اجازه دادن.\n" +
+                            "۴) برگردید و دوباره ارسال کنید.", style = MaterialTheme.typography.bodySmall)
+                        Button(onClick = {
+                            ctx.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                android.net.Uri.fromParts("package", ctx.packageName, null)))
+                        }) { Text("باز کردن تنظیمات برنامه") }
+                    }
+                }
+            }
+        }
         plan?.let { pl ->
             item { Text("پیش‌نمایش پیامک‌ها", style = MaterialTheme.typography.titleMedium) }
             items(pl) { p ->
