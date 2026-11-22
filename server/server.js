@@ -24,10 +24,6 @@ db.exec(`
     revoked INTEGER NOT NULL DEFAULT 0
   )`);
 
-db.exec('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)');
-const qMetaGet = db.prepare('SELECT v FROM meta WHERE k = ?');
-const qMetaSet = db.prepare('INSERT INTO meta (k, v) VALUES (?, ?) ON CONFLICT(k) DO UPDATE SET v = excluded.v');
-
 const qInsert = db.prepare('INSERT INTO codes (code, label, created_at) VALUES (?, ?, ?)');
 const qGet = db.prepare('SELECT * FROM codes WHERE code = ?');
 // مصرف اتمیک: فقط اگر هنوز مصرف نشده و باطل نشده باشد
@@ -42,18 +38,6 @@ function newCode() {
     if (!qGet.get(c)) return c;
   }
 }
-
-// کد تست ادمین: چندبارمصرف، مصرف نمی‌شود و برای تست اپ است. با TEST_CODE (۱۲ رقم) قابل تنظیم است؛
-// اگر تنظیم نشده باشد اولین بار خودکار ساخته و در دیتابیس ذخیره می‌شود (در لاگ و پنل /admin دیده می‌شود).
-function testCode() {
-  if (/^\d{12}$/.test(process.env.TEST_CODE || '')) return process.env.TEST_CODE;
-  const row = qMetaGet.get('test_code');
-  if (row) return row.v;
-  const c = newCode();
-  qMetaSet.run('test_code', c);
-  return c;
-}
-function regenTestCode() { const c = newCode(); qMetaSet.run('test_code', c); return c; }
 
 // محدودیت تلاش برای جلوگیری از حدس زدن کد (۱۰ تلاش در ۱۰ دقیقه برای هر IP)
 const attempts = new Map();
@@ -101,7 +85,6 @@ const server = http.createServer(async (req, res) => {
       const device = String(body.deviceId || '').slice(0, 100);
       if (!/^\d{12}$/.test(code) || !device) return send(res, 400, { error: 'bad_request' });
       const row = qGet.get(code);
-      if (code === testCode()) return send(res, 200, { ok: true, test: true });
       if (!row || row.revoked) return send(res, 404, { error: 'invalid' });
       if (qUse.run(Date.now(), device, code).changes === 1) return send(res, 200, { ok: true });
       // قبلاً مصرف شده: اگر همان دستگاه دوباره بزند (مثلاً پاسخ قبلی به دستگاه نرسیده) پذیرفته می‌شود
@@ -113,11 +96,7 @@ const server = http.createServer(async (req, res) => {
 
     if (url.pathname.startsWith('/admin/')) {
       if (!adminOk(req)) return send(res, 401, { error: 'unauthorized' });
-      if (req.method === 'GET' && url.pathname === '/admin/codes') return send(res, 200, { codes: qList.all(), testCode: testCode(), testCodeFromEnv: /^\d{12}$/.test(process.env.TEST_CODE || '') });
-      if (req.method === 'POST' && url.pathname === '/admin/test-code/regenerate') {
-        if (/^\d{12}$/.test(process.env.TEST_CODE || '')) return send(res, 409, { error: 'env_controlled' });
-        return send(res, 200, { testCode: regenTestCode() });
-      }
+      if (req.method === 'GET' && url.pathname === '/admin/codes') return send(res, 200, { codes: qList.all() });
       if (req.method === 'POST' && url.pathname === '/admin/codes') {
         const body = await readJson(req);
         const n = Math.min(Math.max(parseInt(body.count, 10) || 1, 1), 200);
@@ -145,23 +124,18 @@ td,th{border-bottom:1px solid #ddd;padding:6px;text-align:right}code{direction:l
 <div><input id="key" type="password" placeholder="کلید ادمین"> <button onclick="load()">ورود</button></div>
 <div><input id="label" placeholder="برچسب (مثلاً نام کاربر)"> <input id="count" type="number" min="1" max="200" value="1" style="width:5em">
 <button onclick="gen()">ساخت کد</button></div><pre id="new"></pre>
-<p id="tc"></p>
 <table id="t"></table>
 <script>
 const H=()=>({authorization:'Bearer '+key.value,'content-type':'application/json'});
 const fmt=t=>t?new Date(t).toLocaleString('fa-IR'):'—';
 async function load(){const r=await fetch('/admin/codes',{headers:H()});if(!r.ok){t.innerHTML='<tr><td>کلید اشتباه است</td></tr>';return}
-const {codes,testCode,testCodeFromEnv}=await r.json();tc.innerHTML='کد تست ادمین (چندبارمصرف، مصرف نمی‌شود): <code>'+testCode+'</code> '+(testCodeFromEnv?'':'<button onclick="regen()">ساخت کد تست جدید</button>');t.innerHTML='<tr><th>کد</th><th>برچسب</th><th>وضعیت</th><th>زمان مصرف</th><th></th></tr>'+codes.map(c=>
+const {codes}=await r.json();t.innerHTML='<tr><th>کد</th><th>برچسب</th><th>وضعیت</th><th>زمان مصرف</th><th></th></tr>'+codes.map(c=>
 '<tr><td><code>'+c.code+'</code></td><td>'+esc(c.label)+'</td><td>'+(c.revoked?'باطل':c.used_at?'مصرف شد':'آزاد')+'</td><td>'+fmt(c.used_at)+'</td><td>'+
 (c.revoked?'':'<button onclick="rev(\\''+c.code+'\\')">ابطال</button>')+'</td></tr>').join('')}
 const esc=s=>s.replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
 async function gen(){const r=await fetch('/admin/codes',{method:'POST',headers:H(),body:JSON.stringify({count:+count.value,label:label.value})});
 const j=await r.json();document.getElementById('new').textContent=(j.codes||[]).join('\\n');load()}
-async function regen(){if(!confirm('کد تست قبلی از کار می‌افتد. ادامه؟'))return;await fetch('/admin/test-code/regenerate',{method:'POST',headers:H()});load()}
 async function rev(c){if(!confirm('ابطال شود؟'))return;await fetch('/admin/codes/'+c+'/revoke',{method:'POST',headers:H()});load()}
 </script></body></html>`;
 
-server.listen(PORT, () => {
-  console.log('listening on :' + PORT);
-  console.log('کد تست ادمین (چندبارمصرف): ' + testCode());
-});
+server.listen(PORT, () => console.log('listening on :' + PORT));
