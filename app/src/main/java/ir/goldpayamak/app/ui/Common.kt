@@ -28,7 +28,7 @@ fun MessageCard(m: MessageEntity, showText: Boolean = true) {
                 Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
             }
             Text(
-                "${kindLabel(m.kind)} • ${Jalali.fromMillis(m.createdAt).format()} ${Jalali.timeOf(m.createdAt)} • قیمت ${Price.format(m.price)}",
+                "${kindLabel(m.kind)} • ${Jalali.fromMillis(m.createdAt).format()} ${Jalali.timeOf(m.createdAt)} • قیمت ${Price.formatToman(m.price)}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (showText) Text(m.text, style = MaterialTheme.typography.bodyMedium)

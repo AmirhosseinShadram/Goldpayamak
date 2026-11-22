@@ -33,6 +33,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     var side by remember { mutableStateOf(GoldSide.SELL) }
     var amountText by remember { mutableStateOf("") }
     var rateText by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     var permMsg by remember { mutableStateOf<String?>(null) }
@@ -72,12 +73,12 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val errors = Gold.validate(data)
     val plan = if (errors.isEmpty()) {
         if (parentId == null) Gold.original(vm.displayName, data)
-        else oldData?.let { Gold.correction(vm.displayName, it, data) }
+        else oldData?.let { Gold.correction(vm.displayName, it, data, note) }
     } else null
 
     fun doSend() {
         sending = true
-        if (parentId == null) vm.sendGold(data, onDone) else vm.sendGoldCorrection(parentId, data, onDone)
+        if (parentId == null) vm.sendGold(data, onDone) else vm.sendGoldCorrection(parentId, data, note, onDone)
     }
     fun sendOrAskSim() {
         val sims = listSims(ctx)
@@ -101,7 +102,10 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        if (parentId != null) Text("اصلاحیه با پیشوند «اصلاحیه:» برای گیرنده فرستاده می‌شود. اگر گیرنده را عوض کنید، گیرندهٔ قبلی پیام «لغو» می‌گیرد.", style = MaterialTheme.typography.bodySmall)
+        if (parentId != null) {
+            Text("اصلاحیه با پیشوند «اصلاحیه ❗❗» برای گیرنده فرستاده می‌شود. اگر گیرنده را عوض کنید، گیرندهٔ قبلی پیام «کنسلی ❌❌» می‌گیرد.", style = MaterialTheme.typography.bodySmall)
+            OutlinedTextField(note, { note = it }, label = { Text("توضیحات اصلاحیه (در پیامک هم می‌رود)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GoldSide.entries.forEach { s ->
                 FilterChip(selected = side == s, onClick = { side = s }, label = { Text(s.word) })
@@ -119,18 +123,18 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                 }
             }
         }
-        OutlinedTextField(amountText, { amountText = it }, label = { Text("مبلغ") }, singleLine = true,
+        OutlinedTextField(amountText, { amountText = it }, label = { Text("مبلغ (تومان)") }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
-            supportingText = { amount?.let { Text(Price.format(it)) } })
-        OutlinedTextField(rateText, { rateText = it }, label = { Text("فی طلایی") }, singleLine = true,
+            supportingText = { amount?.let { Text(Price.formatToman(it)) } })
+        OutlinedTextField(rateText, { rateText = it }, label = { Text("فی طلایی (تومان)") }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
-            supportingText = { rate?.let { Text(Price.format(it)) } })
+            supportingText = { rate?.let { Text(Price.formatToman(it)) } })
         errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         permMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         plan?.forEach { p ->
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${p.party.name}  ${p.party.phone}" + if (p.kind == Kind.CANCEL) "  [لغو]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه]" else "",
+                    Text("${p.party.name}  ${p.party.phone}" + if (p.kind == Kind.CANCEL) "  [کنسلی ❌❌]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه ❗❗]" else "",
                         style = MaterialTheme.typography.labelLarge)
                     Text(p.text, style = MaterialTheme.typography.bodyMedium)
                 }
@@ -161,21 +165,6 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
 
     if (appPick) {
         val contacts by vm.contacts.collectAsState()
-        AlertDialog(
-            onDismissRequest = { appPick = false },
-            title = { Text("انتخاب از مخاطبین برنامه") },
-            text = {
-                if (contacts.isEmpty()) Text("هنوز مخاطبی ذخیره نشده است.")
-                else LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                    items(contacts) { c ->
-                        TextButton(onClick = { slot.name = c.name; slot.phone = c.phone; appPick = false }, Modifier.fillMaxWidth()) {
-                            Text("${c.name}  ${c.phone}", Modifier.fillMaxWidth())
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = { appPick = false }) { Text("بستن") } },
-        )
+        AppContactPickerDialog(contacts, onPick = { c -> slot.name = c.name; slot.phone = c.phone; appPick = false }, onDismiss = { appPick = false })
     }
 }

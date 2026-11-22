@@ -62,6 +62,8 @@ object PdfReport {
         fun needSpace(h: Float) { if (y + h > H - M) newPage() }
 
         val ok = Digits::toPersian
+        // ایموجی در PDF خوب رندر نمی‌شود؛ متن‌ها بدون ❌/❗ نوشته می‌شوند
+        fun plain(t: String) = t.replace("\u274C", "").replace("\u2757", "").lines().joinToString("\n") { it.trim() }
         block(reportTitle, title, gap = 6f)
         block("کاربر: $userName", normal)
         block("از تاریخ ${ok(fromText)} تا ${ok(toText)}", normal)
@@ -78,12 +80,13 @@ object PdfReport {
             y += 8f
             val r = g.request
             val isGold = r.type == "GOLD"
-            val priceText = if (isGold) "مبلغ ${Price.format(r.price)} • فی ${Price.format(r.rate)}" else "قیمت ${Price.format(r.price)}"
-            block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${requestStateLabel(r)} • $priceText", small)
-            block(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "(بدون متن)", bold, gap = 6f)
+            val priceText = if (isGold) "مبلغ ${Price.formatToman(r.price)} • فی ${Price.formatToman(r.rate)}" else "قیمت ${Price.formatToman(r.price)}"
+            block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${plain(requestStateLabel(r))} • $priceText", small)
+            block(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "(بدون متن)"), bold, gap = 6f)
+            if (r.note.isNotBlank()) block("توضیحات: ${r.note}", normal, gap = 6f)
             val tag = supersededTag(r)
             for (m in g.recipients) {
-                val st = statusLabel(m.status) + (tag?.let { " • $it" } ?: "")
+                val st = plain(statusLabel(m.status) + (tag?.let { " • $it" } ?: ""))
                 block("${m.name}  ${m.phone}  —  $st", normal, indent = 16, gap = 2f)
             }
             if (g.recipients.isEmpty()) block("(پیامکی به طرف‌ها ارسال نشده)", small, indent = 16)

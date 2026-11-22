@@ -100,6 +100,7 @@ private fun ReportGroupCard(g: ReportGroup) {
                 Text(requestStateLabel(r), style = MaterialTheme.typography.labelMedium, color = statusColor(r.status))
             }
             Text(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
+            if (r.note.isNotBlank()) Text("توضیحات: ${r.note}", style = MaterialTheme.typography.bodySmall)
             Text(if (open) "▲ پیامک‌های ارسال‌شده به طرف‌ها (${Digits.toPersian(g.recipients.size.toString())})"
                 else "▼ ${Digits.toPersian(g.recipients.size.toString())} پیامک به طرف‌ها",
                 style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)

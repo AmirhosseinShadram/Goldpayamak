@@ -37,7 +37,7 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
                         Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
                         Text((if (r.type == "GOLD") "طلایی • " else "حواله • ") + requestStateLabel(r), color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
                     }
-                    // متن پیام طرف ۲ (خود کاربر)؛ با زدن روی آن می‌شود اصلاح یا لغو کرد
+                    // متن پیام طرف ۲ (خود کاربر)؛ با زدن روی آن می‌شود اصلاح یا کنسل کرد
                     Text(selfByReq[r.id]?.text ?: "—", style = MaterialTheme.typography.bodyMedium)
                 }
             }
@@ -69,10 +69,11 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
                         Text(requestStateLabel(r), color = statusColor(r.status), style = MaterialTheme.typography.labelMedium)
                     }
                     Text(self?.text ?: "—", style = MaterialTheme.typography.titleSmall)
+                    if (r.note.isNotBlank()) Text("توضیحات: ${r.note}", style = MaterialTheme.typography.bodyMedium)
                     if (r.status == Status.REQ_ACTIVE) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            Button(onClick = { onCorrect(r.id, isGold) }, enabled = !busy) { Text("اصلاح") }
-                            OutlinedButton(onClick = { confirmCancel = true }, enabled = !busy) { Text("لغو") }
+                            Button(onClick = { onCorrect(r.id, isGold) }, enabled = !busy) { Text("اصلاحیه ❗❗") }
+                            OutlinedButton(onClick = { confirmCancel = true }, enabled = !busy) { Text("کنسلی ❌❌") }
                         }
                     }
                     if (r.parentId != null) TextButton(onClick = { onOpen(r.parentId) }) { Text("مشاهدهٔ نسخهٔ قبلی") }
@@ -83,24 +84,32 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
         item { Text(if (isGold) "وضعیت پیامک ارسال‌شده" else "پیامک‌های ارسال‌شده به طرف‌ها", style = MaterialTheme.typography.titleSmall) }
         items(recipients, key = { it.id }) { RecipientRow(it, tag) }
         if (children.isNotEmpty()) {
-            item { Text("اصلاح / لغو این درخواست", style = MaterialTheme.typography.titleSmall) }
+            item { Text("اصلاحیه / کنسلی این درخواست", style = MaterialTheme.typography.titleSmall) }
             items(children, key = { it.id }) { c ->
                 Card(Modifier.fillMaxWidth().clickable { onOpen(c.id) }) {
                     Row(Modifier.padding(12.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text(if (c.kind == "CANCEL") "لغو" else "اصلاحیه", style = MaterialTheme.typography.titleSmall)
+                        Text(if (c.kind == "CANCEL") "کنسلی ❌❌" else "اصلاحیه ❗❗", style = MaterialTheme.typography.titleSmall)
                         Text("${Jalali.fromMillis(c.createdAt).format()}  ${Jalali.timeOf(c.createdAt)}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
         }
     }
-    if (confirmCancel) AlertDialog(
-        onDismissRequest = { confirmCancel = false },
-        title = { Text("لغو درخواست") },
-        text = { Text("برای همهٔ طرف‌ها پیامک «لغو» ارسال می‌شود. ادامه می‌دهید؟") },
-        confirmButton = { TextButton(onClick = { confirmCancel = false; vm.cancel(id) { onOpen(it) } }) { Text("لغو و ارسال") } },
-        dismissButton = { TextButton(onClick = { confirmCancel = false }) { Text("انصراف") } },
-    )
+    if (confirmCancel) {
+        var cancelNote by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { confirmCancel = false },
+            title = { Text("کنسلی ❌❌") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("برای همهٔ طرف‌ها پیامک «کنسلی» ارسال می‌شود. ادامه می‌دهید؟")
+                    OutlinedTextField(cancelNote, { cancelNote = it }, label = { Text("توضیحات کنسلی (در پیامک هم می‌رود)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+                }
+            },
+            confirmButton = { TextButton(onClick = { confirmCancel = false; vm.cancel(id, cancelNote) { onOpen(it) } }) { Text("کنسلی و ارسال") } },
+            dismissButton = { TextButton(onClick = { confirmCancel = false }) { Text("انصراف") } },
+        )
+    }
 }
 
 /** پیامک یک طرف: نام، شماره و وضعیت؛ با زدن، متن پیامک باز می‌شود. */

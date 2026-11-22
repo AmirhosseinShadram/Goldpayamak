@@ -15,7 +15,7 @@ object Status {
     const val REQ_ACTIVE = "ACTIVE"
     const val REQ_SUPERSEDED = "SUPERSEDED"
     const val REQ_CANCELLED = "CANCELLED"
-    const val REQ_RECORD = "RECORD" // خود ردیف اصلاحیه/لغو
+    const val REQ_RECORD = "RECORD" // خود ردیف اصلاحیه/کنسلی
 }
 
 @Entity(tableName = "contacts", indices = [Index("phone", unique = true)])
@@ -41,6 +41,8 @@ data class RequestEntity(
     @ColumnInfo(defaultValue = "0") val rate: Long = 0,
     /** فقط طلایی: SELL یا BUY */
     @ColumnInfo(defaultValue = "''") val side: String = "",
+    /** توضیحات اصلاحیه/کنسلی (در پیامک هم فرستاده می‌شود) */
+    @ColumnInfo(defaultValue = "''") val note: String = "",
 )
 
 @Entity(tableName = "parties", indices = [Index("requestId")])
@@ -140,7 +142,7 @@ interface AppDao {
     @Query("SELECT * FROM messages WHERE requestId = :id ORDER BY id")
     fun messagesOf(id: Long): Flow<List<MessageEntity>>
 
-    /** پیام‌های همهٔ نسخه‌های یک درخواست (اصلی، اصلاحیه‌ها، لغو) */
+    /** پیام‌های همهٔ نسخه‌های یک درخواست (اصلی، اصلاحیه‌ها، کنسلی) */
     @Query("SELECT m.* FROM messages m JOIN requests r ON r.id = m.requestId WHERE r.rootId = :rootId ORDER BY m.createdAt, m.id")
     fun messagesOfRoot(rootId: Long): Flow<List<MessageEntity>>
 
@@ -201,9 +203,15 @@ private val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
     }
 }
 
+private val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE requests ADD COLUMN note TEXT NOT NULL DEFAULT ''")
+    }
+}
+
 @Database(
     entities = [ContactEntity::class, RequestEntity::class, PartyEntity::class, MessageEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 abstract class AppDb : RoomDatabase() {
@@ -213,7 +221,7 @@ abstract class AppDb : RoomDatabase() {
         @Volatile private var inst: AppDb? = null
         fun get(ctx: Context): AppDb = inst ?: synchronized(this) {
             inst ?: Room.databaseBuilder(ctx.applicationContext, AppDb::class.java, "goldpayamak.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build().also { inst = it }
         }
     }

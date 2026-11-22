@@ -36,6 +36,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val ctx = LocalContext.current
     val slots = remember { mutableStateListOf(Slot(), Slot()) }
     var priceText by remember { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
     var oldRing by remember { mutableStateOf<List<Party>?>(null) }
     var oldPrice by remember { mutableLongStateOf(0L) }
     var pickTarget by remember { mutableStateOf<Slot?>(null) }
@@ -84,7 +85,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val errors = Planner.validate(ring) + (if (price == null) listOf("قیمت را به عدد (بزرگ‌تر از صفر) وارد کنید") else emptyList())
     val plan = if (errors.isEmpty() && price != null) {
         if (parentId == null) Planner.original(ring, price)
-        else oldRing?.let { Planner.correction(it, oldPrice, ring, price) }
+        else oldRing?.let { Planner.correction(it, oldPrice, ring, price, note) }
     } else null
 
     var simChoices by remember { mutableStateOf<List<Sim>?>(null) }
@@ -92,7 +93,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     fun doSend() {
         val p = price ?: return
         sending = true
-        if (parentId == null) vm.sendNew(ring, p, onDone) else vm.sendCorrection(parentId, ring, p, onDone)
+        if (parentId == null) vm.sendNew(ring, p, onDone) else vm.sendCorrection(parentId, ring, p, note, onDone)
     }
 
     // گوشی دو‌سیم‌کارته بدون سیم پیش‌فرض پیامک: قبل از ارسال از کاربر می‌پرسیم (انتخاب در تنظیمات ذخیره می‌شود)
@@ -121,8 +122,11 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         if (parentId != null) item {
-            Text("اصلاحیه برای همهٔ طرف‌های جدید فرستاده می‌شود؛ کسی که حذف کنید پیام «لغو» می‌گیرد و کسی که اضافه کنید پیام اصلی.",
+            Text("اصلاحیه برای همهٔ طرف‌های جدید فرستاده می‌شود؛ کسی که حذف کنید پیام «کنسلی» می‌گیرد و کسی که اضافه کنید پیام اصلی.",
                 style = MaterialTheme.typography.bodySmall)
+        }
+        if (parentId != null) item {
+            OutlinedTextField(note, { note = it }, label = { Text("توضیحات اصلاحیه (در پیامک هم می‌رود)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         }
         // ترتیب نمایش: طرف ۱، طرف ۲ (شما)، طرف ۳، ...
         items(slots.size + 1) { row ->
@@ -157,9 +161,9 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             if (slots.size + 1 < Ring.MAX_PARTIES) OutlinedButton(onClick = { slots.add(Slot()) }, Modifier.fillMaxWidth()) { Text("افزودن طرف") }
         }
         item {
-            OutlinedTextField(priceText, { priceText = it }, label = { Text("قیمت (یکسان برای همهٔ طرف‌ها)") }, singleLine = true,
+            OutlinedTextField(priceText, { priceText = it }, label = { Text("قیمت به تومان (یکسان برای همهٔ طرف‌ها)") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
-                supportingText = { price?.let { Text(Price.format(it)) } })
+                supportingText = { price?.let { Text(Price.formatToman(it)) } })
         }
         if (errors.isNotEmpty()) item { errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
         permMsg?.let { m ->
@@ -187,7 +191,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Text(
                             (if (p.isSelf) "${p.party.name} (شما) — فقط ثبت می‌شود" else "${p.party.name}  ${p.party.phone}") +
-                                if (p.kind == Kind.CANCEL) "  [لغو]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه]" else "",
+                                if (p.kind == Kind.CANCEL) "  [کنسلی ❌❌]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه ❗❗]" else "",
                             style = MaterialTheme.typography.labelLarge,
                         )
                         Text(p.text, style = MaterialTheme.typography.bodyMedium)
@@ -233,21 +237,6 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
 
     appPickTarget?.let { target ->
         val contacts by vm.contacts.collectAsState()
-        AlertDialog(
-            onDismissRequest = { appPickTarget = null },
-            title = { Text("انتخاب از مخاطبین برنامه") },
-            text = {
-                if (contacts.isEmpty()) Text("هنوز مخاطبی ذخیره نشده است.")
-                else LazyColumn(Modifier.heightIn(max = 360.dp)) {
-                    items(contacts) { c ->
-                        TextButton(onClick = { target.name = c.name; target.phone = c.phone; appPickTarget = null }, Modifier.fillMaxWidth()) {
-                            Text("${c.name}  ${c.phone}", Modifier.fillMaxWidth())
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = { TextButton(onClick = { appPickTarget = null }) { Text("بستن") } },
-        )
+        AppContactPickerDialog(contacts, onPick = { c -> target.name = c.name; target.phone = c.phone; appPickTarget = null }, onDismiss = { appPickTarget = null })
     }
 }

@@ -28,6 +28,9 @@ object Price {
         return if (v > 0) v else null
     }
 
+    /** قیمت همراه واحد: ۱۲۰,۰۰۰ تومان */
+    fun formatToman(value: Long): String = format(value) + " تومان"
+
     /** سه رقم سه رقم از راست جدا می‌شود، با ارقام فارسی و بدون واحد: ۱۲۰,۰۰۰ */
     fun format(value: Long): String {
         val s = value.toString()
@@ -50,4 +53,9 @@ object Phone {
         if (t.length == 10 && t.startsWith("9")) t = "0$t"
         return if (Regex("^09\\d{9}$").matches(t)) t else null
     }
+}
+
+object TextNorm {
+    /** برای جستجو: ی/ک عربی به فارسی، ارقام به لاتین، حروف کوچک */
+    fun fa(s: String): String = Digits.toLatin(s).replace('\u064A', '\u06CC').replace('\u0643', '\u06A9').lowercase().trim()
 }

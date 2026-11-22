@@ -76,8 +76,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         onDone(id)
     }
 
-    fun sendCorrection(parentId: Long, ring: List<Party>, price: Long, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createCorrection(parentId, displayName, ring, price)
+    fun sendCorrection(parentId: Long, ring: List<Party>, price: Long, note: String, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createCorrection(parentId, displayName, ring, price, note)
         SendService.start(app, id)
         onDone(id)
     }
@@ -88,8 +88,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         onDone(id)
     }
 
-    fun sendGoldCorrection(parentId: Long, d: GoldData, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createGoldCorrection(parentId, displayName, d)
+    fun sendGoldCorrection(parentId: Long, d: GoldData, note: String, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createGoldCorrection(parentId, displayName, d, note)
         SendService.start(app, id)
         onDone(id)
     }
@@ -104,8 +104,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
         onDone()
     }
 
-    fun cancel(parentId: Long, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createCancel(parentId, displayName)
+    fun cancel(parentId: Long, note: String, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createCancel(parentId, displayName, note)
         SendService.start(app, id)
         onDone(id)
     }
@@ -145,8 +145,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
 fun kindLabel(k: String) = when (k) {
     "ORIGINAL" -> "اصلی"
-    "CORRECTION" -> "اصلاحیه"
-    "CANCEL" -> "لغو"
+    "CORRECTION" -> "اصلاحیه ❗❗"
+    "CANCEL" -> "کنسلی ❌❌"
     else -> k
 }
 
@@ -158,8 +158,8 @@ fun statusLabel(s: String) = when (s) {
     Status.FAILED -> "ناموفق"
     Status.SELF -> "ثبت (طرف ۲، ارسال نمی‌شود)"
     Status.REQ_ACTIVE -> "فعال"
-    Status.REQ_SUPERSEDED -> "اصلاح شده"
-    Status.REQ_CANCELLED -> "لغو شده"
+    Status.REQ_SUPERSEDED -> "اصلاح شده ❗❗"
+    Status.REQ_CANCELLED -> "کنسل شده ❌❌"
     Status.REQ_RECORD -> "ثبت شد"
     else -> s
 }

@@ -24,12 +24,12 @@ class Repo(private val ctx: Context) {
         save(Kind.ORIGINAL, null, userName, ring, price, Planner.original(ring, price))
 
     /** اصلاحیه روی آخرین نسخهٔ فعال */
-    suspend fun createCorrection(parentId: Long, userName: String, newRing: List<Party>, newPrice: Long): Long {
+    suspend fun createCorrection(parentId: Long, userName: String, newRing: List<Party>, newPrice: Long, note: String = ""): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
         check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل اصلاح است" }
         val oldRing = ringOf(parentId)
-        val plan = Planner.correction(oldRing, parent.price, newRing, newPrice)
-        return save(Kind.CORRECTION, parent, userName, newRing, newPrice, plan)
+        val plan = Planner.correction(oldRing, parent.price, newRing, newPrice, note)
+        return save(Kind.CORRECTION, parent, userName, newRing, newPrice, plan, note = note.trim())
     }
 
     suspend fun goldOf(requestId: Long): GoldData {
@@ -41,34 +41,34 @@ class Repo(private val ctx: Context) {
     suspend fun createGold(userName: String, d: GoldData): Long =
         save(Kind.ORIGINAL, null, userName, listOf(d.party), d.amount, Gold.original(userName, d), "GOLD", d.rate, d.side.name)
 
-    suspend fun createGoldCorrection(parentId: Long, userName: String, new: GoldData): Long {
+    suspend fun createGoldCorrection(parentId: Long, userName: String, new: GoldData, note: String = ""): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
         check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل اصلاح است" }
         val old = goldOf(parentId)
         return save(Kind.CORRECTION, parent, userName, listOf(new.party), new.amount,
-            Gold.correction(userName, old, new), "GOLD", new.rate, new.side.name)
+            Gold.correction(userName, old, new, note), "GOLD", new.rate, new.side.name, note.trim())
     }
 
-    suspend fun createCancel(parentId: Long, userName: String): Long {
+    suspend fun createCancel(parentId: Long, userName: String, note: String = ""): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
-        check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل لغو است" }
+        check(parent.status == Status.REQ_ACTIVE) { "فقط آخرین نسخهٔ فعال قابل کنسلی است" }
         if (parent.type == "GOLD") {
             val old = goldOf(parentId)
-            return save(Kind.CANCEL, parent, userName, listOf(old.party), old.amount, Gold.cancel(userName, old), "GOLD", old.rate, old.side.name)
+            return save(Kind.CANCEL, parent, userName, listOf(old.party), old.amount, Gold.cancel(userName, old, note), "GOLD", old.rate, old.side.name, note.trim())
         }
         val ring = ringOf(parentId)
-        return save(Kind.CANCEL, parent, userName, ring, parent.price, Planner.cancel(ring, parent.price))
+        return save(Kind.CANCEL, parent, userName, ring, parent.price, Planner.cancel(ring, parent.price, note), note = note.trim())
     }
 
     private suspend fun save(
         kind: Kind, parent: RequestEntity?, userName: String, ring: List<Party>, price: Long, plan: List<Planned>,
-        type: String = "RING", rate: Long = 0, side: String = "",
+        type: String = "RING", rate: Long = 0, side: String = "", note: String = "",
     ): Long = db.withTransaction {
         val now = System.currentTimeMillis()
         val status = if (kind == Kind.CANCEL) Status.REQ_RECORD else Status.REQ_ACTIVE
         val id = dao.insertRequest(
             RequestEntity(rootId = parent?.rootId ?: 0, parentId = parent?.id, kind = kind.name, price = price,
-                userName = userName, createdAt = now, status = status, type = type, rate = rate, side = side)
+                userName = userName, createdAt = now, status = status, type = type, rate = rate, side = side, note = note)
         )
         if (parent == null) dao.setRoot(id, id)
         dao.insertParties(ring.mapIndexed { i, p ->

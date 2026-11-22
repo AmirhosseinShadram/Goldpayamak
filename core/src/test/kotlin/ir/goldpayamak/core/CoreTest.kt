@@ -36,9 +36,11 @@ class CoreTest {
     }
 
     @Test fun bodyLayout() {
-        assertEquals("جمله\n\n۱۲۰,۰۰۰", MessageText.body(Kind.ORIGINAL, "جمله", 120000))
-        assertEquals("اصلاحیه:\nجمله\n\n۱۲۰,۰۰۰", MessageText.body(Kind.CORRECTION, "جمله", 120000))
-        assertEquals("لغو:\nجمله\n\n۱۲۰,۰۰۰", MessageText.body(Kind.CANCEL, "جمله", 120000))
+        assertEquals("جمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.ORIGINAL, "جمله", 120000))
+        assertEquals("❗❗ اصلاحیه\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", 120000))
+        assertEquals("❗❗ اصلاحیه\nقیمت عوض شد\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", 120000, "  قیمت عوض شد "))
+        assertEquals("❌❌ کنسلی\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CANCEL, "جمله", 120000, " "))
+        assertEquals("جمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.ORIGINAL, "جمله", 120000, "نباید بیاید"))
     }
 
     @Test fun priceFormatAndParse() {
@@ -101,13 +103,16 @@ class CoreTest {
         val old = listOf(Party("A", "0911"), Party("Me", ""), Party("C", "0913"), Party("D", "0914"))
         // D حذف، E اضافه
         val new = listOf(Party("A", "0911"), Party("Me", ""), Party("C", "0913"), Party("E", "0915"))
-        val plan = Planner.correction(old, 100, new, 200)
+        val plan = Planner.correction(old, 100, new, 200, "ببخشید")
         val byPhone = plan.associateBy { it.party.phone + it.kind }
         assertEquals(Kind.CORRECTION, byPhone["0911CORRECTION"]!!.kind)
         assertEquals(Kind.ORIGINAL, byPhone["0915ORIGINAL"]!!.kind)
         val cancel = byPhone["0914CANCEL"]!!
-        assertTrue(cancel.text.contains("۱۰۰"))
-        assertTrue(cancel.text.startsWith("لغو:\nD از C بگیر"))
+        assertTrue(cancel.text.contains("۱۰۰ تومان"))
+        assertTrue(cancel.text.contains("ببخشید"))
+        assertTrue(plan.filter { it.kind == Kind.CORRECTION }.all { it.text.contains("ببخشید") })
+        assertTrue(plan.filter { it.kind == Kind.ORIGINAL }.none { it.text.contains("ببخشید") })
+        assertTrue(cancel.text.startsWith("❌❌ کنسلی\nببخشید\nD از C بگیر"))
         assertEquals(5, plan.size) // ۴ نفر جدید (شامل خود کاربر) + ۱ لغو
         assertTrue(plan.any { it.isSelf })
     }
@@ -129,19 +134,24 @@ class CoreTest {
 
     @Test fun goldMessages() {
         val a = GoldData(Party("سینا", "09111111111"), GoldSide.SELL, 600000, 10000000)
-        assertEquals("بابت امیر فروختم به سینا ۶۰۰,۰۰۰ در فی طلایی ۱۰,۰۰۰,۰۰۰", Gold.sentence("امیر", a))
+        assertEquals("بابت امیر فروختم به سینا ۶۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان", Gold.sentence("امیر", a))
         val b = a.copy(side = GoldSide.BUY, amount = 700000)
-        assertEquals("بابت امیر خریدم به سینا ۷۰۰,۰۰۰ در فی طلایی ۱۰,۰۰۰,۰۰۰", Gold.sentence("امیر", b))
-        assertEquals("اصلاحیه:\nبابت امیر خریدم به سینا ۷۰۰,۰۰۰ در فی طلایی ۱۰,۰۰۰,۰۰۰",
-            Gold.correction("امیر", a, b).single().text)
+        assertEquals("بابت امیر خریدم به سینا ۷۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان", Gold.sentence("امیر", b))
+        assertEquals("❗❗ اصلاحیه\nمبلغ عوض شد\nبابت امیر خریدم به سینا ۷۰۰,۰۰۰ تومان در فی طلایی ۱۰,۰۰۰,۰۰۰ تومان",
+            Gold.correction("امیر", a, b, "مبلغ عوض شد").single().text)
         val c = Gold.cancel("امیر", a).single()
         assertEquals(Kind.CANCEL, c.kind)
-        assertTrue(c.text.startsWith("لغو:\nبابت امیر فروختم"))
+        assertTrue(c.text.startsWith("❌❌ کنسلی\nبابت امیر فروختم"))
         // گیرندهٔ جدید: قبلی لغو، جدید پیام اصلی
         val other = b.copy(party = Party("رضا", "09122222222"))
         val plan = Gold.correction("امیر", a, other)
         assertEquals(listOf(Kind.ORIGINAL, Kind.CANCEL), plan.map { it.kind })
         assertTrue(Gold.validate(a.copy(amount = 0)).isNotEmpty())
         assertTrue(Gold.validate(a).isEmpty())
+    }
+
+    @Test fun searchNormalize() {
+        assertEquals("علی ۱", TextNorm.fa("علي ١").replace("1", "۱"))
+        assertEquals("0912", TextNorm.fa("۰۹۱۲"))
     }
 }
