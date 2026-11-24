@@ -8,6 +8,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import ir.goldpayamak.app.AppViewModel
@@ -48,6 +52,10 @@ private fun ActivationForm(vm: AppViewModel, modifier: Modifier = Modifier) {
             "برای دریافت کد فعال‌سازی یا راهنمایی، روی آیکن پشتیبانی بزنید.",
             style = MaterialTheme.typography.bodyMedium,
         )
+        if (BuildConfig.OFFLINE_LICENSE) {
+            OfflineActivationForm(vm)
+            return@Column
+        }
         if (BuildConfig.DEMO) {
             Text("نسخهٔ دمو", style = MaterialTheme.typography.headlineMedium)
             Text("این نسخه فقط برای آزمایش است و کد فعال‌سازی نمی‌خواهد. پیامک‌ها واقعاً ارسال می‌شوند؛ برای تست از شماره‌های خودتان استفاده کنید.")
@@ -86,4 +94,48 @@ private fun ActivationForm(vm: AppViewModel, modifier: Modifier = Modifier) {
             },
         ) { Text(if (vm.activating) "در حال بررسی…" else "فعال‌سازی") }
     }
+}
+
+
+@Composable
+private fun OfflineActivationForm(vm: AppViewModel) {
+    var name by remember { mutableStateOf(vm.displayName) }
+    var license by remember { mutableStateOf("") }
+    var invalid by remember { mutableStateOf(false) }
+    val clipboard = LocalClipboardManager.current
+    val request = vm.offlineRequestCode
+
+    Text("فعال‌سازی آفلاین", style = MaterialTheme.typography.headlineMedium)
+    if (request == null) {
+        Text("شناسهٔ دستگاه در دسترس نیست.", color = MaterialTheme.colorScheme.error)
+        return
+    }
+    Text("کد درخواست این گوشی را برای پشتیبانی بفرستید و کد فعال‌سازی دریافتی را وارد کنید.")
+    OutlinedTextField(
+        value = request,
+        onValueChange = {},
+        readOnly = true,
+        singleLine = true,
+        label = { Text("کد درخواست") },
+        textStyle = TextStyle(textDirection = TextDirection.Ltr),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    TextButton(onClick = { clipboard.setText(AnnotatedString(request)) }) { Text("کپی کد درخواست") }
+    OutlinedTextField(name, { name = it }, label = { Text("نام شما") },
+        singleLine = true, modifier = Modifier.fillMaxWidth())
+    OutlinedTextField(
+        value = license,
+        onValueChange = { license = it.take(128); invalid = false },
+        label = { Text("کد فعال‌سازی") },
+        singleLine = true,
+        isError = invalid,
+        textStyle = TextStyle(textDirection = TextDirection.Ltr),
+        modifier = Modifier.fillMaxWidth(),
+    )
+    if (invalid) Text("کد فعال‌سازی برای این گوشی معتبر نیست.", color = MaterialTheme.colorScheme.error)
+    Button(
+        modifier = Modifier.fillMaxWidth(),
+        enabled = name.isNotBlank() && license.isNotBlank(),
+        onClick = { invalid = !vm.activateOffline(name, license) },
+    ) { Text("فعال‌سازی") }
 }

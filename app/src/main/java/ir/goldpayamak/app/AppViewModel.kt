@@ -2,6 +2,7 @@ package ir.goldpayamak.app
 
 import android.app.Application
 import android.net.Uri
+import android.provider.Settings
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -21,7 +22,15 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     val repo = Repo(app)
     val dao get() = repo.dao
 
-    var isActivated by mutableStateOf(prefs.isActivated)
+    val offlineRequestCode = if (BuildConfig.OFFLINE_LICENSE) {
+        Settings.Secure.getString(app.contentResolver, Settings.Secure.ANDROID_ID)
+            ?.takeIf { it.isNotBlank() }
+            ?.let { OfflineLicense.requestCode(app.packageName, it) }
+    } else null
+    var isActivated by mutableStateOf(
+        if (BuildConfig.OFFLINE_LICENSE) isValidOfflineLicense(prefs.offlineLicense) else prefs.isActivated
+    )
+        private set
     var displayName by mutableStateOf(prefs.displayName)
     var senderNames by mutableStateOf(prefs.senderNames)
         private set
@@ -54,6 +63,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** فقط در نسخهٔ دمو: بدون کد فعال‌سازی */
     fun activateDemo(name: String) {
+        check(BuildConfig.DEMO)
         prefs.markActivated(name)
         displayName = prefs.displayName
         senderNames = prefs.senderNames
@@ -62,6 +72,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     /** اعتبارسنجی کد روی سرور؛ در صورت موفقیت نام ذخیره و برنامه برای همیشه (تا حذف برنامه) فعال می‌شود. */
     fun activate(name: String, code: String, onResult: (ActivationResult) -> Unit) {
+        check(!BuildConfig.OFFLINE_LICENSE)
         activating = true
         viewModelScope.launch {
             val r = Activation.activate(app, code)
@@ -74,6 +85,18 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             activating = false
             onResult(r)
         }
+    }
+
+    private fun isValidOfflineLicense(license: String): Boolean =
+        offlineRequestCode?.let { OfflineLicense.verify(BuildConfig.LICENSE_PUBLIC_KEY, it, license) } == true
+
+    fun activateOffline(name: String, license: String): Boolean {
+        if (!BuildConfig.OFFLINE_LICENSE || name.isBlank() || !isValidOfflineLicense(license)) return false
+        prefs.saveOfflineLicense(name, license)
+        displayName = prefs.displayName
+        senderNames = prefs.senderNames
+        isActivated = true
+        return true
     }
 
     // ---- درخواست‌ها ----

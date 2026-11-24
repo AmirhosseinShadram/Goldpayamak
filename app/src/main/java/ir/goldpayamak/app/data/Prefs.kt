@@ -11,6 +11,12 @@ class Prefs(ctx: Context) {
     val isActivated: Boolean get() = sp.getBoolean("activated", false)
     fun markActivated(name: String) { sp.edit().putString("display", name.trim()).putBoolean("activated", true).apply() }
 
+    val offlineLicense: String get() = sp.getString("offlineLicense", "").orEmpty()
+
+    fun saveOfflineLicense(name: String, license: String) {
+        sp.edit().putString("display", name.trim()).putString("offlineLicense", license.trim()).apply()
+    }
+
     val displayName: String get() = sp.getString("display", "").orEmpty()
 
     val senderNames: List<String>

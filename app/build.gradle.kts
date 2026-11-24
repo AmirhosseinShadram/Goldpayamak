@@ -12,7 +12,12 @@ val activationUrl = (project.findProperty("activationUrl") as String?) ?: "https
 
 // نسخهٔ دمو (بدون کد فعال‌سازی، فقط برای آزمایش): -PdemoMode=true
 val redesignPreview = (project.findProperty("redesignPreview") as String?) == "true"
-val demoMode = redesignPreview || (project.findProperty("demoMode") as String?) == "true"
+val licensePublicKey = providers.gradleProperty("licensePublicKey").orElse("").get().trim()
+require(licensePublicKey.isEmpty() || licensePublicKey.matches(Regex("[A-Za-z0-9+/]+={0,2}"))) {
+    "licensePublicKey must be a Base64-encoded public key (DER)."
+}
+val offlineLicense = licensePublicKey.isNotEmpty()
+val demoMode = !offlineLicense && (redesignPreview || (project.findProperty("demoMode") as String?) == "true")
 
 android {
     namespace = "ir.goldpayamak.app"
@@ -22,9 +27,11 @@ android {
         applicationId = "ir.goldpayamak.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = if (redesignPreview) 21 else 9
-        versionName = if (redesignPreview) "1.8-preview13" else if (demoMode) "1.8-demo" else "1.8"
+        versionCode = if (redesignPreview) 22 else if (offlineLicense) 10 else 9
+        versionName = if (redesignPreview) "1.8-preview14" else if (offlineLicense) "1.9" else if (demoMode) "1.8-demo" else "1.8"
         buildConfigField("boolean", "DEMO", demoMode.toString())
+        buildConfigField("boolean", "OFFLINE_LICENSE", offlineLicense.toString())
+        buildConfigField("String", "LICENSE_PUBLIC_KEY", "\"$licensePublicKey\"")
         if (redesignPreview) applicationIdSuffix = ".redesign" else if (demoMode) applicationIdSuffix = ".demo"
         manifestPlaceholders["appLabel"] = "گلدپیامک"
         buildConfigField("String", "ACTIVATION_URL", "\"${activationUrl.trimEnd('/')}\"")

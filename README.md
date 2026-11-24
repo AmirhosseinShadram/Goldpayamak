@@ -23,3 +23,22 @@ ADMIN_KEY=یک-کلید-طولانی-و-محرمانه PORT=8080 node server.js
 ```
 ./gradlew :app:assembleRelease -PactivationUrl=https://your-server
 ```
+
+## فعال‌سازی آفلاین
+
+این نوع APK با کلید عمومی صدور لایسنس ساخته می‌شود. کلید خصوصی را در یک مسیر خارج از مخزن بسازید و یک نسخهٔ پشتیبان امن از آن نگه دارید. برای به‌روزرسانی برنامه از همان کلید عمومی استفاده کنید تا لایسنس‌های قبلی معتبر بمانند.
+
+```bash
+umask 077
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 -aes-256-cbc -out ../goldpayamak-license-private.pem
+openssl pkey -in ../goldpayamak-license-private.pem -pubout -outform DER | openssl base64 -A > ../goldpayamak-license-public.b64
+./gradlew :app:assembleRelease -PlicensePublicKey="$(cat ../goldpayamak-license-public.b64)"
+```
+
+پس از دریافت کد درخواست مشتری و تأیید پرداخت، کد فعال‌سازی را روی کامپیوتر خودتان بسازید:
+
+```bash
+bash tools/issue-license.sh ../goldpayamak-license-private.pem 'REQUEST_CODE'
+```
+
+کاربر خروجی را در فیلد کد فعال‌سازی وارد می‌کند. کد برای همان شناسهٔ بسته و دستگاه معتبر است. برای تست کنار نسخهٔ موجود، به دستور بیلد `-PredesignPreview=true` اضافه کنید و با کد درخواست همان نسخه لایسنس صادر کنید. کلید عمومی مربوط به همین لایسنس‌هاست و با کلید امضای APK فرق دارد. لایسنس آفلاین دائمی است و ابطال از راه دور ندارد.
