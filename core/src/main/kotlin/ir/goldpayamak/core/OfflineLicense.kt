@@ -3,6 +3,7 @@ package ir.goldpayamak.core
 import java.security.GeneralSecurityException
 import java.security.KeyFactory
 import java.security.MessageDigest
+import java.security.PrivateKey
 import java.security.Signature
 import java.security.spec.X509EncodedKeySpec
 import java.util.Base64
@@ -18,6 +19,19 @@ object OfflineLicense {
         return urlEncoder.encodeToString(digest.copyOf(16))
     }
 
+    fun sign(privateKey: PrivateKey, requestCode: String): String {
+        require(requestFormat.matches(requestCode))
+        val signer = Signature.getInstance("SHA256withECDSA")
+        signer.initSign(privateKey)
+        signer.update(payload(requestCode))
+        return urlEncoder.encodeToString(signer.sign())
+    }
+
+    fun isRequestCode(value: String): Boolean = requestFormat.matches(value)
+
+    private fun payload(requestCode: String) =
+        "goldpayamak-license-v1:$requestCode".toByteArray(Charsets.UTF_8)
+
     fun verify(publicKey: String, requestCode: String, license: String): Boolean {
         val code = license.trim()
         if (!requestFormat.matches(requestCode) || !signatureFormat.matches(code)) return false
@@ -27,7 +41,7 @@ object OfflineLicense {
             val key = KeyFactory.getInstance("EC").generatePublic(X509EncodedKeySpec(keyBytes))
             val verifier = Signature.getInstance("SHA256withECDSA")
             verifier.initVerify(key)
-            verifier.update("goldpayamak-license-v1:$requestCode".toByteArray(Charsets.UTF_8))
+            verifier.update(payload(requestCode))
             verifier.verify(Base64.getUrlDecoder().decode(code))
         } catch (_: GeneralSecurityException) {
             false

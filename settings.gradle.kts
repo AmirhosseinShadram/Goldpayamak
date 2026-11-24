@@ -13,4 +13,4 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "Goldpayamak"
-include(":core", ":app")
+include(":core", ":app", ":issuer")
