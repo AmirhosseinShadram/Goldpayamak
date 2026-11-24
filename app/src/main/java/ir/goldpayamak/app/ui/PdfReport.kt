@@ -13,7 +13,6 @@ import ir.goldpayamak.app.data.requestStateLabel
 import ir.goldpayamak.app.statusLabel
 import ir.goldpayamak.core.Digits
 import ir.goldpayamak.core.Jalali
-import ir.goldpayamak.core.Price
 import java.io.OutputStream
 
 /** گزارش PDF راست‌به‌چپ: هر ردیف پیام طرف ۲ است و زیرش پیامک‌های ارسال‌شده به طرف‌ها با وضعیت. */
@@ -72,14 +71,13 @@ object PdfReport {
             y += 8f
             val r = g.request
             val isGold = r.type == "GOLD"
-            val priceText = if (isGold) "مبلغ ${Price.formatToman(r.price)} • فی ${Price.formatToman(r.rate)}" else r.transferAmount.format()
-            block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${plain(requestStateLabel(r))} • $priceText", small)
+            block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${plain(requestStateLabel(r))}", small)
             block(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "(بدون متن)"), bold, gap = 6f)
             val shownText = g.self?.text ?: g.recipients.firstOrNull()?.text.orEmpty()
             if (r.note.isNotBlank() && !shownText.contains(r.note)) block("توضیحات: ${r.note}", normal, gap = 6f)
             for (m in g.recipients) {
                 val st = plain(statusLabel(m.status))
-                val amount = if (isGold) "" else "  —  ${m.transferAmount.format()}"
+                val amount = if (!isGold && m.transferAmount != r.transferAmount) "  —  ${m.transferAmount.format()}" else ""
                 block("${m.name}  ${m.phone}$amount  —  $st", normal, indent = 16, gap = 2f)
             }
             if (g.recipients.isEmpty()) block("(پیامکی به طرف‌ها ارسال نشده)", small, indent = 16)

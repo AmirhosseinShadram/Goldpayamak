@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -18,6 +19,7 @@ import ir.goldpayamak.app.data.Status
 import ir.goldpayamak.app.statusLabel
 import ir.goldpayamak.core.Jalali
 import ir.goldpayamak.core.Phone
+import ir.goldpayamak.core.TextNorm
 
 @Composable
 fun HistoryScreen(
@@ -32,7 +34,17 @@ fun HistoryScreen(
     val messagesByRequest = remember(messages) { messages.groupBy { it.requestId } }
     val actionsByRoot = remember(actions) { actions.groupBy { it.rootId } }
     val type = if (isGold) "GOLD" else "RING"
-    val history = remember(roots, type) { roots.filter { it.type == type } }
+    var search by rememberSaveable(isGold) { mutableStateOf("") }
+    val query = normalizeHistorySearch(search)
+    val entries by remember(type) { vm.dao.historySearchEntries(type) }.collectAsState(initial = emptyList())
+    val matches = remember(entries, query) {
+        if (query.isBlank()) emptySet() else entries.asSequence()
+            .filter { entry -> listOf(entry.name, entry.phone, entry.text).any { normalizeHistorySearch(it).contains(query) } }
+            .map { it.rootId }.toSet()
+    }
+    val history = remember(roots, type, query, matches) {
+        roots.filter { it.type == type && (query.isBlank() || it.id in matches) }
+    }
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -40,14 +52,27 @@ fun HistoryScreen(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         if (onStart != null) item {
-            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("ثبت طلایی جدید") }
+            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text(if (isGold) "ثبت طلایی جدید" else "ثبت حواله جدید") }
+        }
+        item {
+            OutlinedTextField(
+                value = search,
+                onValueChange = { search = it },
+                label = { Text("جستجو با نام، شماره یا مبلغ") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         if (isGold && history.isNotEmpty()) item {
             Text("آخرین طلایی‌ها", Modifier.padding(vertical = 6.dp), style = MaterialTheme.typography.titleMedium)
         }
         if (history.isEmpty()) item {
             Text(
-                if (isGold) "هنوز طلایی‌ای ثبت نشده است." else "هنوز حواله‌ای ثبت نشده است.",
+                when {
+                    query.isNotBlank() -> "نتیجه‌ای پیدا نشد."
+                    isGold -> "هنوز طلایی‌ای ثبت نشده است."
+                    else -> "هنوز حواله‌ای ثبت نشده است."
+                },
                 Modifier.padding(vertical = 12.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -73,6 +98,9 @@ fun HistoryScreen(
         }
     }
 }
+
+private fun normalizeHistorySearch(value: String) =
+    TextNorm.fa(value).replace(",", "").replace("٬", "").replace('٫', '.')
 
 @Composable
 fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit, onOpen: (Long) -> Unit) {

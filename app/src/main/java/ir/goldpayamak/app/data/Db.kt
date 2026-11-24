@@ -82,6 +82,8 @@ data class MessageEntity(
         get() = goldGrams?.let { requireNotNull(TransferAmount.GoldGrams.parse(it)) } ?: TransferAmount.Toman(price)
 }
 
+data class HistorySearchEntry(val rootId: Long, val name: String, val phone: String, val text: String)
+
 @Dao
 interface AppDao {
     // مخاطبین
@@ -168,6 +170,13 @@ interface AppDao {
     /** پیام‌های همهٔ نسخه‌های یک درخواست (اصلی، اصلاحیه‌ها، کنسلی) */
     @Query("SELECT m.* FROM messages m JOIN requests r ON r.id = m.requestId WHERE r.rootId = :rootId ORDER BY m.createdAt, m.id")
     fun messagesOfRoot(rootId: Long): Flow<List<MessageEntity>>
+
+    @Query("""
+        SELECT r.rootId, m.name, m.phone, m.text
+        FROM messages m JOIN requests r ON r.id = m.requestId
+        WHERE r.type = :type
+    """)
+    fun historySearchEntries(type: String): Flow<List<HistorySearchEntry>>
 
     @Query("SELECT * FROM messages WHERE phone = :phone ORDER BY createdAt DESC, id DESC")
     fun messagesOfPhone(phone: String): Flow<List<MessageEntity>>

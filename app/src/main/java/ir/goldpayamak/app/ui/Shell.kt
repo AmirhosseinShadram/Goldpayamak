@@ -113,7 +113,12 @@ fun MainShell(vm: AppViewModel) {
                     onStart = { push(Screen.Form(null)) },
                     onGold = { push(Screen.GoldForm(null)) },
                 )
-                1 -> HistoryScreen(vm, isGold = false, onOpen = { push(Screen.Detail(it)) })
+                1 -> HistoryScreen(
+                    vm,
+                    isGold = false,
+                    onOpen = { push(Screen.Detail(it)) },
+                    onStart = { push(Screen.Form(null)) },
+                )
                 2 -> HistoryScreen(
                     vm,
                     isGold = true,
