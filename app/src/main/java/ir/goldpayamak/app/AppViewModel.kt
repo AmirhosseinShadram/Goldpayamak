@@ -153,7 +153,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             try {
                 val groups = groupReport(dao.requestsBetweenOnce(from, to), dao.messagesBetweenOnce(from, to)).filter { it.request.type == type }
                 app.contentResolver.openOutputStream(uri, "wt")!!.use {
-                    ir.goldpayamak.app.ui.PdfReport.write(it, displayName, fromText, toText, groups, if (type == "GOLD") "گزارش طلایی" else "گزارش حواله")
+                    ir.goldpayamak.app.ui.PdfReport.write(it, fromText, toText, groups, if (type == "GOLD") "گزارش طلایی" else "گزارش حواله")
                 }
                 true
             } catch (e: Exception) { false }

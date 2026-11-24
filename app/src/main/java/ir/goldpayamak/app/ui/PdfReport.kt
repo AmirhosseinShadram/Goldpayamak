@@ -21,7 +21,7 @@ object PdfReport {
     private const val H = 842
     private const val M = 36
 
-    fun write(out: OutputStream, userName: String, fromText: String, toText: String, groups: List<ReportGroup>, reportTitle: String) {
+    fun write(out: OutputStream, fromText: String, toText: String, groups: List<ReportGroup>, reportTitle: String) {
         val doc = PdfDocument()
         var pageNo = 1
         var page = doc.startPage(PdfDocument.PageInfo.Builder(W, H, pageNo).create())
@@ -61,7 +61,6 @@ object PdfReport {
 
         val ok = Digits::toPersian
         block(reportTitle, title, gap = 6f)
-        block("کاربر: $userName", normal)
         block("از تاریخ ${ok(fromText)} تا ${ok(toText)}", normal)
         if (groups.isEmpty()) block("در این بازه موردی ثبت نشده است.", normal)
 
@@ -72,13 +71,14 @@ object PdfReport {
             val r = g.request
             val isGold = r.type == "GOLD"
             block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${plain(requestStateLabel(r))}", small)
+            block("کاربر: ${r.userName}", small)
             block(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "(بدون متن)"), bold, gap = 6f)
             val shownText = g.self?.text ?: g.recipients.firstOrNull()?.text.orEmpty()
             if (r.note.isNotBlank() && !shownText.contains(r.note)) block("توضیحات: ${r.note}", normal, gap = 6f)
             for (m in g.recipients) {
                 val st = plain(statusLabel(m.status))
                 val amount = if (!isGold && m.transferAmount != r.transferAmount) "  —  ${m.transferAmount.format()}" else ""
-                block("${m.name}  ${m.phone}$amount  —  $st", normal, indent = 16, gap = 2f)
+                block("${m.name}  ${m.phone}$amount  —  $st\nکاربر: ${r.userName}", normal, indent = 16, gap = 2f)
             }
             if (g.recipients.isEmpty()) block("(پیامکی به طرف‌ها ارسال نشده)", small, indent = 16)
             y += 6f

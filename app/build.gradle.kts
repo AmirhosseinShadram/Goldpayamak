@@ -22,8 +22,8 @@ android {
         applicationId = "ir.goldpayamak.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = if (redesignPreview) 15 else 9
-        versionName = if (redesignPreview) "1.8-preview7" else if (demoMode) "1.8-demo" else "1.8"
+        versionCode = if (redesignPreview) 16 else 9
+        versionName = if (redesignPreview) "1.8-preview8" else if (demoMode) "1.8-demo" else "1.8"
         buildConfigField("boolean", "DEMO", demoMode.toString())
         if (redesignPreview) applicationIdSuffix = ".redesign" else if (demoMode) applicationIdSuffix = ".demo"
         manifestPlaceholders["appLabel"] = if (redesignPreview) "گلدپیامک (طرح جدید)" else if (demoMode) "گلدپیامک (دمو)" else "گلدپیامک"
