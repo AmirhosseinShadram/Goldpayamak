@@ -52,7 +52,7 @@ class SendService : Service() {
         val list = dao.pendingOf(rid)
         for ((i, m) in list.withIndex()) {
             sendOne(m, prefs.subId)
-            if (i < list.lastIndex) delay(prefs.delaySeconds * 1000L)
+            if (i < list.lastIndex) delay(SMS_INTERVAL_MILLIS)
         }
     }
 
@@ -106,6 +106,7 @@ class SendService : Service() {
     }
 
     companion object {
+        private const val SMS_INTERVAL_MILLIS = 3_000L
         const val EXTRA_REQUEST = "request"
         const val EXTRA_MESSAGE = "message"
         const val ACTION_SENT = "ir.goldpayamak.app.SMS_SENT"

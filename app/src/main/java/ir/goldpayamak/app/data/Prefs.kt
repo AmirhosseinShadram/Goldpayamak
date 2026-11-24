@@ -39,8 +39,4 @@ class Prefs(ctx: Context) {
     var subId: Int
         get() = sp.getInt("subId", -1)
         set(v) = sp.edit().putInt("subId", v).apply()
-
-    var delaySeconds: Int
-        get() = sp.getInt("delay", 3)
-        set(v) = sp.edit().putInt("delay", v.coerceIn(1, 60)).apply()
 }

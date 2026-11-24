@@ -7,13 +7,11 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import ir.goldpayamak.app.AppViewModel
@@ -36,7 +34,6 @@ fun SettingsScreen(vm: AppViewModel) {
     val ctx = LocalContext.current
     var confirmClear by remember { mutableStateOf(false) }
     var clearedMsg by remember { mutableStateOf<String?>(null) }
-    var delay by remember { mutableStateOf(vm.prefs.delaySeconds.toString()) }
     var subId by remember { mutableIntStateOf(vm.prefs.subId) }
     var sims by remember { mutableStateOf<List<Sim>>(emptyList()) }
     var needPerm by remember { mutableStateOf(false) }
@@ -67,12 +64,6 @@ fun SettingsScreen(vm: AppViewModel) {
                 Text(s.label)
             }
         }
-        HorizontalDivider()
-        OutlinedTextField(delay, { delay = it; Digits.toLatin(it).toIntOrNull()?.let { v -> vm.prefs.delaySeconds = v } },
-            label = { Text("وقفه بین پیامک‌ها (ثانیه)") }, singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
-            supportingText = { Text("برای جلوگیری از مسدود شدن توسط اپراتور، وقفه را زیاد کم نکنید.") })
-        HorizontalDivider()
         HorizontalDivider()
         OutlinedButton(onClick = { confirmClear = true }, colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
             Text("پاک کردن دیتابیس")
