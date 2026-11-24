@@ -35,6 +35,7 @@ private fun label(j: Int) = "طرف ${Digits.toPersian((if (j == 0) 1 else j + 2
 fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val ctx = LocalContext.current
     val slots = remember { mutableStateListOf(Slot(), Slot()) }
+    var senderName by remember(parentId) { mutableStateOf(vm.defaultSenderName) }
     var gramsText by remember { mutableStateOf("") }
     var priceText by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
@@ -51,6 +52,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             val ring = vm.ringOf(parentId)
             val req = vm.requestOnce(parentId)
             oldRing = ring
+            senderName = ring.getOrNull(Ring.USER_INDEX)?.name ?: vm.defaultSenderName
             oldAmount = req?.transferAmount
             slots.clear()
             ring.forEachIndexed { i, p -> if (i != Ring.USER_INDEX) slots.add(Slot(p.name, p.phone)) }
@@ -77,10 +79,10 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         }
     }
 
-    val ring: List<Party> = remember(slots.toList().map { it.name to it.phone }, vm.displayName) {
+    val ring: List<Party> = remember(slots.toList().map { it.name to it.phone }, senderName) {
         val others = slots.map { Party(it.name.trim(), Phone.normalize(it.phone) ?: it.phone.trim()) }
         if (others.size < 2) emptyList() else buildList {
-            add(others[0]); add(Party(vm.displayName, "")); addAll(others.drop(1))
+            add(others[0]); add(Party(senderName.trim(), "")); addAll(others.drop(1))
         }
     }
     val price = Price.parse(priceText)
@@ -90,7 +92,8 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         priceText.isBlank() -> grams
         else -> null
     }
-    val errors = Planner.validate(ring) + if (amount == null) {
+    val errors = Planner.validate(ring) +
+        listOfNotNull("نام طرف ۲ را وارد کنید".takeIf { senderName.isBlank() }) + if (amount == null) {
         listOf("فقط یکی از دو مقدار تومان یا گرم طلا را به‌صورت عدد بزرگ‌تر از صفر وارد کنید")
     } else emptyList()
     val previous = oldAmount
@@ -144,7 +147,10 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         items(slots.size + 1) { row ->
             if (row == 1) {
                 Card(Modifier.fillMaxWidth()) {
-                    Text("طرف ۲: ${vm.displayName} (شما)", Modifier.padding(16.dp), style = MaterialTheme.typography.titleSmall)
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("طرف ۲ (شما)", style = MaterialTheme.typography.titleSmall)
+                        SenderNameField(senderName, { senderName = it }, vm.senderNames)
+                    }
                 }
             } else {
                 val j = if (row == 0) 0 else row - 1

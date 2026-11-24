@@ -2,7 +2,7 @@ package ir.goldpayamak.app.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import ir.goldpayamak.app.data.RequestEntity
@@ -125,4 +125,31 @@ fun ActionDialog(a: RequestEntity, msgs: List<MessageEntity>, onDismiss: () -> U
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("بستن") } },
     )
+}
+
+@Composable
+fun SenderNameField(name: String, onNameChange: (String) -> Unit, names: List<String>) {
+    var expanded by remember { mutableStateOf(false) }
+    Column {
+        OutlinedTextField(
+            value = name,
+            onValueChange = onNameChange,
+            label = { Text("نام شما در پیامک") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        if (names.isNotEmpty()) {
+            Box {
+                TextButton(onClick = { expanded = true }) { Text("انتخاب از نام‌های قبلی") }
+                DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                    names.forEach { previous ->
+                        DropdownMenuItem(text = { Text(previous) }, onClick = {
+                            onNameChange(previous)
+                            expanded = false
+                        })
+                    }
+                }
+            }
+        }
+    }
 }

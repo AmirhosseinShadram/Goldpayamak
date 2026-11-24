@@ -23,6 +23,9 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     var isActivated by mutableStateOf(prefs.isActivated)
     var displayName by mutableStateOf(prefs.displayName)
+    private var recentSenderNames by mutableStateOf(prefs.senderNames)
+    val senderNames: List<String> get() = (recentSenderNames + displayName).filter { it.isNotBlank() }.distinct()
+    val defaultSenderName: String get() = senderNames.firstOrNull().orEmpty()
 
     val contacts = dao.contacts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
     val goldMessages = dao.goldMessages().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -73,32 +76,39 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     // ---- درخواست‌ها ----
     fun sendNew(ring: List<Party>, amount: TransferAmount, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createOriginal(displayName, ring, amount)
+        val id = repo.createOriginal(ring[Ring.USER_INDEX].name, ring, amount)
         SendService.start(app, id)
+        rememberSender(ring[Ring.USER_INDEX].name)
         onDone(id)
     }
 
     fun sendCorrection(parentId: Long, ring: List<Party>, amount: TransferAmount, note: String, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createCorrection(parentId, displayName, ring, amount, note)
+        val id = repo.createCorrection(parentId, ring[Ring.USER_INDEX].name, ring, amount, note)
         SendService.start(app, id)
+        rememberSender(ring[Ring.USER_INDEX].name)
         onDone(id)
     }
 
-    fun sendGold(d: GoldData, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createGold(displayName, d)
+    fun sendGold(senderName: String, d: GoldData, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createGold(senderName, d)
         SendService.start(app, id)
+        rememberSender(senderName)
         onDone(id)
     }
 
-    fun sendGoldCorrection(parentId: Long, d: GoldData, note: String, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createGoldCorrection(parentId, displayName, d, note)
+    fun sendGoldCorrection(parentId: Long, senderName: String, d: GoldData, note: String, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createGoldCorrection(parentId, senderName, d, note)
         SendService.start(app, id)
+        rememberSender(senderName)
         onDone(id)
     }
 
     suspend fun goldOf(id: Long) = repo.goldOf(id)
 
-    fun saveName(n: String) { prefs.displayName = n; displayName = prefs.displayName }
+    private fun rememberSender(name: String) {
+        prefs.rememberSender(name)
+        recentSenderNames = prefs.senderNames
+    }
 
     /** حذف همهٔ مخاطبین، درخواست‌ها و پیام‌ها (فعال‌سازی و نام باقی می‌ماند) */
     fun clearAll(onDone: () -> Unit) = guarded {
@@ -107,7 +117,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     fun cancel(parentId: Long, note: String, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createCancel(parentId, displayName, note)
+        val id = repo.createCancel(parentId, note)
         SendService.start(app, id)
         onDone(id)
     }

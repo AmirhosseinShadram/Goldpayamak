@@ -17,8 +17,9 @@ object Gold {
         .replace("{rate}", Price.formatToman(d.rate))
 
     fun body(userName: String, kind: Kind, d: GoldData, note: String = ""): String = buildString {
-        with(MessageText) { prefixAndNote(kind, note) }
+        with(MessageText) { appendPrefix(kind) }
         append(sentence(userName, d))
+        if (kind != Kind.ORIGINAL && note.isNotBlank()) append("\n\n").append(MessageText.NOTE_LABEL).append(note.trim())
     }
 
     private fun planned(userName: String, kind: Kind, d: GoldData, note: String = "") =

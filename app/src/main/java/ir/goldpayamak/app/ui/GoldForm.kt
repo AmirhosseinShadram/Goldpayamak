@@ -30,6 +30,7 @@ import ir.goldpayamak.core.*
 fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val ctx = LocalContext.current
     val slot = remember { Slot() }
+    var senderName by remember(parentId) { mutableStateOf(vm.defaultSenderName) }
     var side by remember { mutableStateOf(GoldSide.SELL) }
     var amountText by remember { mutableStateOf("") }
     var rateText by remember { mutableStateOf("") }
@@ -44,6 +45,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     LaunchedEffect(parentId) {
         if (parentId != null) {
             val d = vm.goldOf(parentId)
+            senderName = vm.requestOnce(parentId)?.userName ?: vm.defaultSenderName
             oldData = d
             slot.name = d.party.name; slot.phone = d.party.phone
             side = d.side
@@ -70,15 +72,15 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val amount = Price.parse(amountText)
     val rate = Price.parse(rateText)
     val data = GoldData(Party(slot.name.trim(), Phone.normalize(slot.phone) ?: slot.phone.trim()), side, amount ?: 0, rate ?: 0)
-    val errors = Gold.validate(data)
+    val errors = Gold.validate(data) + listOfNotNull("نام فرستنده را وارد کنید".takeIf { senderName.isBlank() })
     val plan = if (errors.isEmpty()) {
-        if (parentId == null) Gold.original(vm.displayName, data)
-        else oldData?.let { Gold.correction(vm.displayName, data, note) }
+        if (parentId == null) Gold.original(senderName.trim(), data)
+        else oldData?.let { Gold.correction(senderName.trim(), data, note) }
     } else null
 
     fun doSend() {
         sending = true
-        if (parentId == null) vm.sendGold(data, onDone) else vm.sendGoldCorrection(parentId, data, note, onDone)
+        if (parentId == null) vm.sendGold(senderName.trim(), data, onDone) else vm.sendGoldCorrection(parentId, senderName.trim(), data, note, onDone)
     }
     fun sendOrAskSim() {
         val sims = listSims(ctx)
@@ -106,6 +108,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             Text("فقط یک پیام اصلاحیه برای گیرندهٔ زیر فرستاده می‌شود. اگر گیرنده را عوض کنید، به گیرندهٔ قبلی پیامی نمی‌رود.", style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(note, { note = it }, label = { Text("توضیحات اصلاحیه (در پیامک هم می‌رود)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         }
+        SenderNameField(senderName, { senderName = it }, vm.senderNames)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GoldSide.entries.forEach { s ->
                 FilterChip(selected = side == s, onClick = { side = s }, label = { Text(s.word) })

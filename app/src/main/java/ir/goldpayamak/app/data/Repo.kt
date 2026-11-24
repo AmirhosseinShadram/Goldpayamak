@@ -50,9 +50,10 @@ class Repo(private val ctx: Context) {
             Gold.correction(userName, new, note), "GOLD", new.rate, new.side.name, note.trim())
     }
 
-    suspend fun createCancel(parentId: Long, userName: String, note: String = ""): Long {
+    suspend fun createCancel(parentId: Long, note: String = ""): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
         check(dao.childCount(parentId) == 0) { "فقط آخرین نسخه قابل کنسلی است" }
+        val userName = parent.userName
         if (parent.type == "GOLD") {
             val old = goldOf(parentId)
             return save(Kind.CANCEL, parent, userName, listOf(old.party), old.amount, Gold.cancel(userName, old, note), "GOLD", old.rate, old.side.name, note.trim())

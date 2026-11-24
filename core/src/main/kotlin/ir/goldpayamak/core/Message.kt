@@ -37,7 +37,7 @@ object Ring {
 
 object MessageText {
     const val CORRECTION_PREFIX = "\u2757\u2757 اصلاحیه" // ❗❗
-    const val NOTE_LABEL = "توضیحات: "
+    const val NOTE_LABEL = "توضیحات : "
     const val CANCEL_PREFIX = "\u274C\u274C کنسلی" // ❌❌
 
     /**
@@ -45,17 +45,18 @@ object MessageText {
      * یک خط خالی، مقدار حواله با واحد آن
      */
     fun body(kind: Kind, sentence: String, amount: TransferAmount, note: String = ""): String = buildString {
-        prefixAndNote(kind, note)
-        append(sentence).append("\n\n").append(amount.format())
+        appendPrefix(kind)
+        append(sentence).append("\n\n")
+        if (kind != Kind.ORIGINAL && note.isNotBlank()) append(NOTE_LABEL).append(note.trim()).append('\n')
+        append(amount.format())
     }
 
-    internal fun StringBuilder.prefixAndNote(kind: Kind, note: String) {
+    internal fun StringBuilder.appendPrefix(kind: Kind) {
         when (kind) {
             Kind.CORRECTION -> append(CORRECTION_PREFIX).append('\n')
             Kind.CANCEL -> append(CANCEL_PREFIX).append('\n')
             Kind.ORIGINAL -> return
         }
-        if (note.isNotBlank()) append(NOTE_LABEL).append(note.trim()).append('\n')
     }
 }
 

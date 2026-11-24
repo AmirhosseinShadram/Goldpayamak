@@ -96,7 +96,7 @@ fun MainShell(vm: AppViewModel) {
 private fun GoldEntry(vm: AppViewModel, onStart: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, androidx.compose.ui.Alignment.CenterVertically)) {
         Text("طلایی", style = MaterialTheme.typography.headlineSmall)
-        Text("پیامک «بابت ${vm.displayName} فروختم/خریدم» برای یک نفر، با مبلغ و فی طلایی.")
+        Text("پیامک «بابت ${vm.defaultSenderName} فروختم/خریدم» برای یک نفر، با مبلغ و فی طلایی.")
         Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("ثبت طلایی جدید") }
     }
 }

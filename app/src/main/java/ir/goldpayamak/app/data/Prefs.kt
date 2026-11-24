@@ -1,6 +1,7 @@
 package ir.goldpayamak.app.data
 
 import android.content.Context
+import org.json.JSONArray
 
 /** تنظیمات محلی و وضعیت فعال‌سازی. */
 class Prefs(ctx: Context) {
@@ -10,9 +11,18 @@ class Prefs(ctx: Context) {
     val isActivated: Boolean get() = sp.getBoolean("activated", false)
     fun markActivated(name: String) { sp.edit().putString("display", name.trim()).putBoolean("activated", true).apply() }
 
-    var displayName: String
-        get() = sp.getString("display", "") ?: ""
-        set(v) = sp.edit().putString("display", v.trim()).apply()
+    val displayName: String get() = sp.getString("display", "").orEmpty()
+
+    val senderNames: List<String>
+        get() {
+            val names = JSONArray(sp.getString("senderNames", "[]") ?: "[]")
+            return List(names.length()) { names.getString(it) }
+        }
+
+    fun rememberSender(name: String) {
+        val names = listOf(name) + senderNames.filterNot { it == name }
+        sp.edit().putString("senderNames", JSONArray(names).toString()).apply()
+    }
 
     /** subscriptionId سیم‌کارت انتخابی؛ -1 یعنی پیش‌فرض سیستم */
     var subId: Int
