@@ -8,6 +8,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -21,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ir.goldpayamak.app.R
+import kotlinx.coroutines.launch
 
 private data class GuideScreenshot(val image: Int, val caption: String)
 
@@ -34,6 +36,8 @@ private val restricted = GuideScreenshot(R.drawable.sms_guide_restricted, "من�
 @Composable
 fun SmsPermissionHelpDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
+    val guideListState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
     var showRestricted by rememberSaveable { mutableStateOf(false) }
     var screenshot by remember { mutableStateOf<GuideScreenshot?>(null) }
     var settingsUnavailable by rememberSaveable { mutableStateOf(false) }
@@ -75,6 +79,7 @@ fun SmsPermissionHelpDialog(onDismiss: () -> Unit) {
         ) { padding ->
             LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
+                state = guideListState,
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
@@ -83,26 +88,39 @@ fun SmsPermissionHelpDialog(onDismiss: () -> Unit) {
                         style = MaterialTheme.typography.bodyMedium)
                 }
                 item {
-                    GuideCard("۱. اطلاعات گلدپیامک", "دکمهٔ پایین صفحه را بزنید. در صفحهٔ «اطلاعات برنامه» گزینهٔ Permissions را باز کنید.",
-                        listOf(appInfo), onImage = { screenshot = it })
-                }
-                item {
-                    GuideCard("۲. مجوز پیامک", "روی SMS بزنید و Allow را انتخاب کنید. پس از فعال شدن مجوز، به گلدپیامک برگردید و ارسال را دوباره تأیید کنید.",
-                        listOf(permissions, allow, allowed), onImage = { screenshot = it })
+                    GuideCard(
+                        "۱. اطلاعات گلدپیامک",
+                        "دکمهٔ «باز کردن تنظیمات برنامه» را بزنید تا صفحهٔ App info باز شود.",
+                        listOf(appInfo),
+                        onImage = { screenshot = it },
+                    )
                 }
                 item {
                     Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("اگر اندروید دسترسی را محدود کرد", style = MaterialTheme.typography.titleMedium)
+                            Text("۲. منوی سه‌نقطه (اختیاری)", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "اگر بالای صفحهٔ App info دکمهٔ سه‌نقطه (⋮) را دیدید، روی آن بزنید. اگر «Allow restricted settings» در منو بود و به نسخهٔ نصب‌شده اعتماد دارید، آن را انتخاب کنید و پیام اندروید را تأیید کنید.",
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                            Text("اگر سه‌نقطه یا این گزینه را ندیدید، از این مرحله رد شوید.", style = MaterialTheme.typography.bodyMedium)
                             TextButton(onClick = { showRestricted = !showRestricted }) {
-                                Text(if (showRestricted) "بستن مرحلهٔ اختیاری" else "دیدن مرحلهٔ سه‌نقطه")
+                                Text(if (showRestricted) "بستن تصویر" else "دیدن تصویر سه‌نقطه")
                             }
-                            if (showRestricted) {
-                                Text("اگر گزینهٔ Allow restricted settings در منوی سه‌نقطهٔ «اطلاعات برنامه» دیده می‌شود و به نسخهٔ نصب‌شده اعتماد دارید، آن را انتخاب کنید. بعد دوباره Permissions ← SMS را باز کنید و Allow را بزنید.")
-                                GuideImage(restricted, onImage = { screenshot = it })
+                            if (showRestricted) GuideImage(restricted, onImage = { screenshot = it })
+                            TextButton(onClick = { scope.launch { guideListState.animateScrollToItem(3) } }) {
+                                Text("رفتن به مرحلهٔ مجوز پیامک")
                             }
                         }
                     }
+                }
+                item {
+                    GuideCard(
+                        "۳. مجوز پیامک",
+                        "در App info به Permissions بروید، روی SMS بزنید و Allow را انتخاب کنید. سپس به گلدپیامک برگردید و ارسال را دوباره تأیید کنید.",
+                        listOf(permissions, allow, allowed),
+                        onImage = { screenshot = it },
+                    )
                 }
             }
         }
