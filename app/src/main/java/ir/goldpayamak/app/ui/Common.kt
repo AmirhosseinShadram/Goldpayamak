@@ -168,3 +168,13 @@ fun SenderNameField(
         }
     }
 }
+
+@Composable
+fun FormattedAmountHint(amount: String) {
+    Text(
+        text = amount,
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
+        color = MaterialTheme.colorScheme.onSurface,
+    )
+}

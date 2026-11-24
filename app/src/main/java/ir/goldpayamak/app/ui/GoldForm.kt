@@ -128,10 +128,10 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         }
         OutlinedTextField(amountText, { amountText = it }, label = { Text("مبلغ (تومان)") }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
-            supportingText = { amount?.let { Text(Price.formatToman(it)) } })
+            supportingText = { amount?.let { FormattedAmountHint(Price.formatToman(it)) } })
         OutlinedTextField(rateText, { rateText = it }, label = { Text("فی طلایی (تومان)") }, singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
-            supportingText = { rate?.let { Text(Price.formatToman(it)) } })
+            supportingText = { rate?.let { FormattedAmountHint(Price.formatToman(it)) } })
         errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         permMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         plan?.forEach { p ->

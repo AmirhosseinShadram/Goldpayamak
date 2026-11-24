@@ -184,7 +184,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                 if (it.isNotBlank()) gramsText = ""
             }, label = { Text("قیمت به تومان") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
-                supportingText = { price?.let { Text(Price.formatToman(it)) } })
+                supportingText = { price?.let { FormattedAmountHint(Price.formatToman(it)) } })
         }
         item {
             OutlinedTextField(gramsText, {
@@ -192,7 +192,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                 if (it.isNotBlank()) priceText = ""
             }, label = { Text("وزن به گرم طلا") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
-                supportingText = { grams?.let { Text(it.format()) } })
+                supportingText = { grams?.let { FormattedAmountHint(it.format()) } })
         }
         if (errors.isNotEmpty()) item { errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
         permMsg?.let { m ->
