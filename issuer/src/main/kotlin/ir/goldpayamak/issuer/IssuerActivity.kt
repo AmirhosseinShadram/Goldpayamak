@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextDirection
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import ir.goldpayamak.core.Jalali
@@ -39,6 +40,7 @@ class IssuerActivity : ComponentActivity() {
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
                     IssuerScreen(
                         store = remember { IssuerStore(applicationContext) },
+                        portableIssuer = remember { PortableIssuer(applicationContext) },
                         writePublicKey = { uri, key ->
                             contentResolver.openOutputStream(uri, "wt")?.use {
                                 it.write(key.toByteArray(Charsets.US_ASCII))
@@ -55,12 +57,19 @@ class IssuerActivity : ComponentActivity() {
 @Composable
 private fun IssuerScreen(
     store: IssuerStore,
+    portableIssuer: PortableIssuer,
     writePublicKey: (android.net.Uri, String) -> Unit,
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var request by rememberSaveable { mutableStateOf("") }
     var entries by remember { mutableStateOf(emptyList<IssuedLicense>()) }
     var result by remember { mutableStateOf<IssuedLicense?>(null) }
+    var hasPortableKey by remember { mutableStateOf(portableIssuer.hasKey) }
+    var unlockedIssuer by remember { mutableStateOf<UnlockedIssuer?>(null) }
+    var importUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var showPassword by remember { mutableStateOf(false) }
+    var password by remember { mutableStateOf("") }
+    val canIssue = !hasPortableKey || unlockedIssuer != null
     var busy by remember { mutableStateOf(true) }
     var feedback by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
@@ -88,7 +97,7 @@ private fun IssuerScreen(
         if (uri != null) scope.launch {
             busy = true
             try {
-                withContext(Dispatchers.IO) { writePublicKey(uri, DeviceIssuer.publicKey()) }
+                withContext(Dispatchers.IO) { writePublicKey(uri, unlockedIssuer?.publicKey ?: DeviceIssuer.publicKey()) }
                 feedback = "کلید عمومی ذخیره شد."
             } catch (e: CancellationException) {
                 throw e
@@ -100,6 +109,60 @@ private fun IssuerScreen(
         }
     }
 
+    val selectKey = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            importUri = uri
+            password = ""
+            showPassword = true
+        }
+    }
+
+    if (showPassword) {
+        AlertDialog(
+            onDismissRequest = { showPassword = false; password = ""; importUri = null },
+            title = { Text("رمز فایل کلید خصوصی") },
+            text = {
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("رمزی که در Termux انتخاب کردی") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                )
+            },
+            confirmButton = {
+                TextButton(enabled = password.isNotEmpty(), onClick = {
+                    val secret = password.toCharArray()
+                    val source = importUri
+                    showPassword = false
+                    password = ""
+                    importUri = null
+                    busy = true
+                    scope.launch {
+                        try {
+                            val key = withContext(Dispatchers.IO) {
+                                if (source == null) portableIssuer.unlock(secret) else portableIssuer.import(source, secret)
+                            }
+                            unlockedIssuer = key
+                            hasPortableKey = true
+                            feedback = if (source == null) "کلید باز شد." else "کلید خصوصی وارد شد."
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (_: Exception) {
+                            feedback = "رمز نادرست است یا فایل کلید رمزدار معتبر نیست."
+                        } finally {
+                            secret.fill('\u0000')
+                            busy = false
+                        }
+                    }
+                }) { Text("باز کردن کلید") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPassword = false; password = ""; importUri = null }) { Text("انصراف") }
+            },
+        )
+    }
+
     Scaffold(topBar = { TopAppBar(title = { Text("صدور لایسنس گلدپیامک") }) }) { padding ->
         LazyColumn(
             Modifier.fillMaxSize().padding(padding).imePadding(),
@@ -108,8 +171,22 @@ private fun IssuerScreen(
         ) {
             item {
                 OutlinedButton(
-                    onClick = { exportPublic.launch("goldpayamak-license-public.b64") },
                     enabled = !busy,
+                    onClick = { selectKey.launch(arrayOf("*/*")) },
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("وارد کردن کلید خصوصی رمزدار (.pem)") }
+                if (hasPortableKey && unlockedIssuer == null) {
+                    TextButton(enabled = !busy, onClick = { importUri = null; showPassword = true }) {
+                        Text("باز کردن کلید واردشده")
+                    }
+                } else if (unlockedIssuer != null) {
+                    Text("کلید واردشده برای صدور فعال است.", style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            item {
+                OutlinedButton(
+                    onClick = { exportPublic.launch("goldpayamak-license-public.b64") },
+                    enabled = !busy && canIssue,
                     modifier = Modifier.fillMaxWidth(),
                 ) { Text("ذخیرهٔ کلید عمومی برای ساخت گلدپیامک") }
             }
@@ -129,17 +206,20 @@ private fun IssuerScreen(
             }
             item {
                 Button(
-                    enabled = !busy && name.isNotBlank() && OfflineLicense.isRequestCode(request.trim()),
+                    enabled = !busy && canIssue && name.isNotBlank() && OfflineLicense.isRequestCode(request.trim()),
                     modifier = Modifier.fillMaxWidth(),
                     onClick = {
                         val customer = name.trim()
                         val deviceRequest = request.trim()
+                        val key = unlockedIssuer?.privateKey
                         busy = true
                         feedback = null
                         scope.launch {
                             try {
                                 val issued = withContext(Dispatchers.IO) {
-                                    store.record(customer, deviceRequest, DeviceIssuer.issue(deviceRequest))
+                                    val code = if (key == null) DeviceIssuer.issue(deviceRequest)
+                                        else OfflineLicense.sign(key, deviceRequest)
+                                    store.record(customer, deviceRequest, code)
                                 }
                                 entries = listOf(issued) + entries
                                 result = issued
