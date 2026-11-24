@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.filled.MoreVert
@@ -62,6 +61,7 @@ fun MainShell(vm: AppViewModel) {
                     is Screen.ContactHistory -> top.name
                 }) },
                 navigationIcon = { IconButton(onClick = { pop() }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "بازگشت") } },
+                actions = { SupportCallButton() },
             )
         }) { pad ->
             Box(Modifier.padding(pad)) {
@@ -91,11 +91,7 @@ fun MainShell(vm: AppViewModel) {
                         }
                     } else Text(morePage ?: tabs[tab])
                 },
-                actions = {
-                    if (tab == 0) IconButton(onClick = { tab = 3 }) {
-                        Icon(Icons.Outlined.Notifications, "وضعیت ارسال")
-                    }
-                },
+                actions = { SupportCallButton() },
                 navigationIcon = {
                     if (morePage != null) IconButton(onClick = { morePage = null }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "بازگشت")

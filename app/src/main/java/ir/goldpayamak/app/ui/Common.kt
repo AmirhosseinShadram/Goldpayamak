@@ -1,6 +1,12 @@
 package ir.goldpayamak.app.ui
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import ir.goldpayamak.app.R
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -218,6 +224,7 @@ fun MessagePreviewDialog(plan: List<Planned>, onDismiss: () -> Unit, onSend: () 
                             Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, "بازگشت")
                         }
                     },
+                    actions = { SupportCallButton() },
                 )
             },
             bottomBar = {
@@ -247,5 +254,34 @@ fun MessagePreviewDialog(plan: List<Planned>, onDismiss: () -> Unit, onSend: () 
                 }
             }
         }
+    }
+}
+
+
+private const val SUPPORT_PHONE = "09123399729"
+
+@Composable
+fun SupportCallButton(modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var dialerUnavailable by remember { mutableStateOf(false) }
+
+    IconButton(
+        modifier = modifier,
+        onClick = {
+            try {
+                context.startActivity(Intent(Intent.ACTION_DIAL, Uri.fromParts("tel", SUPPORT_PHONE, null)))
+            } catch (_: ActivityNotFoundException) {
+                dialerUnavailable = true
+            }
+        },
+    ) {
+        Icon(painterResource(R.drawable.ic_support_headset), contentDescription = "تماس با پشتیبانی")
+    }
+    if (dialerUnavailable) {
+        AlertDialog(
+            onDismissRequest = { dialerUnavailable = false },
+            text = { Text("برای تماس با پشتیبانی شمارهٔ $SUPPORT_PHONE را بگیرید.") },
+            confirmButton = { TextButton(onClick = { dialerUnavailable = false }) { Text("باشه") } },
+        )
     }
 }

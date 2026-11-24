@@ -22,11 +22,11 @@ android {
         applicationId = "ir.goldpayamak.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = if (redesignPreview) 20 else 9
-        versionName = if (redesignPreview) "1.8-preview12" else if (demoMode) "1.8-demo" else "1.8"
+        versionCode = if (redesignPreview) 21 else 9
+        versionName = if (redesignPreview) "1.8-preview13" else if (demoMode) "1.8-demo" else "1.8"
         buildConfigField("boolean", "DEMO", demoMode.toString())
         if (redesignPreview) applicationIdSuffix = ".redesign" else if (demoMode) applicationIdSuffix = ".demo"
-        manifestPlaceholders["appLabel"] = if (redesignPreview) "گلدپیامک (طرح جدید)" else if (demoMode) "گلدپیامک (دمو)" else "گلدپیامک"
+        manifestPlaceholders["appLabel"] = "گلدپیامک"
         buildConfigField("String", "ACTIVATION_URL", "\"${activationUrl.trimEnd('/')}\"")
         // فقط اگر آدرس http (بدون TLS) داده شده باشد ترافیک متنی مجاز می‌شود
         manifestPlaceholders["cleartext"] = if (activationUrl.startsWith("http://")) "true" else "false"

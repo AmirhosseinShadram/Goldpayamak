@@ -23,14 +23,31 @@ private fun cleanCode(s: String) = Digits.toLatin(s).filter { it in '0'..'9' }.t
 /** فعال‌سازی یک‌باره با کد ۱۲ رقمی یک‌بارمصرف. بعد از موفقیت دیگر نمایش داده نمی‌شود. */
 @Composable
 fun AuthScreen(vm: AppViewModel) {
+    Scaffold(
+        topBar = {
+            Box(Modifier.fillMaxWidth().statusBarsPadding().padding(horizontal = 12.dp)) {
+                SupportCallButton(Modifier.align(Alignment.CenterEnd))
+            }
+        },
+    ) { insets ->
+        ActivationForm(vm, Modifier.padding(insets))
+    }
+}
+
+@Composable
+private fun ActivationForm(vm: AppViewModel, modifier: Modifier = Modifier) {
     var name by remember { mutableStateOf(vm.displayName) }
     var code by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
 
     Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
+        modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically),
     ) {
+        Text(
+            "برای دریافت کد فعال‌سازی یا راهنمایی، روی آیکن پشتیبانی بزنید.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
         if (BuildConfig.DEMO) {
             Text("نسخهٔ دمو", style = MaterialTheme.typography.headlineMedium)
             Text("این نسخه فقط برای آزمایش است و کد فعال‌سازی نمی‌خواهد. پیامک‌ها واقعاً ارسال می‌شوند؛ برای تست از شماره‌های خودتان استفاده کنید.")
