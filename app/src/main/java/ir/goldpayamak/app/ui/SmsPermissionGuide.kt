@@ -8,7 +8,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
@@ -22,23 +21,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import ir.goldpayamak.app.R
-import kotlinx.coroutines.launch
 
 private data class GuideScreenshot(val image: Int, val caption: String)
 
-private val appInfo = GuideScreenshot(R.drawable.sms_guide_app_info, "اطلاعات برنامه و گزینهٔ Permissions")
+private val menu = GuideScreenshot(R.drawable.sms_guide_menu, "منوی بازشده و گزینهٔ Allow restricted settings")
+private val appInfo = GuideScreenshot(R.drawable.sms_guide_app_info, "محل سه‌نقطه در اطلاعات برنامه")
 private val permissions = GuideScreenshot(R.drawable.sms_guide_permissions, "گزینهٔ SMS در فهرست مجوزها")
-private val allow = GuideScreenshot(R.drawable.sms_guide_allow, "انتخاب Allow در صفحهٔ SMS permission")
 private val allowed = GuideScreenshot(R.drawable.sms_guide_allowed, "نمونهٔ مجوز پیامک پس از انتخاب Allow")
-private val restricted = GuideScreenshot(R.drawable.sms_guide_restricted, "منوی سه‌نقطه و گزینهٔ Allow restricted settings")
+private val restricted = GuideScreenshot(R.drawable.sms_guide_restricted, "محل گزینهٔ Permissions")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SmsPermissionHelpDialog(onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val guideListState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-    var showRestricted by rememberSaveable { mutableStateOf(false) }
     var screenshot by remember { mutableStateOf<GuideScreenshot?>(null) }
     var settingsUnavailable by rememberSaveable { mutableStateOf(false) }
 
@@ -79,48 +74,23 @@ fun SmsPermissionHelpDialog(onDismiss: () -> Unit) {
         ) { padding ->
             LazyColumn(
                 Modifier.fillMaxSize().padding(padding),
-                state = guideListState,
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
-                    Text("تصاویر از گوشی سامسونگ هستند. برای بزرگ‌نمایی، روی تصویر بزنید.",
-                        style = MaterialTheme.typography.bodyMedium)
+                    GuideCard("۱. دکمهٔ «باز کردن تنظیمات برنامه» را بزنید.", emptyList()) { screenshot = it }
                 }
                 item {
                     GuideCard(
-                        "۱. اطلاعات گلدپیامک",
-                        "دکمهٔ «باز کردن تنظیمات برنامه» را بزنید تا صفحهٔ App info باز شود.",
-                        listOf(appInfo),
-                        onImage = { screenshot = it },
-                    )
+                        "۲. اگر سه‌نقطهٔ بالای صفحه را می‌بینید، روی آن بزنید. اگر به نسخهٔ نصب‌شده اعتماد دارید، «Allow restricted settings» را انتخاب کنید. اگر سه‌نقطه یا این گزینه را نمی‌بینید، به مرحلهٔ ۳ بروید.",
+                        listOf(appInfo, menu),
+                    ) { screenshot = it }
                 }
                 item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text("۲. منوی سه‌نقطه (اختیاری)", style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                "اگر بالای صفحهٔ App info دکمهٔ سه‌نقطه (⋮) را دیدید، روی آن بزنید. اگر «Allow restricted settings» در منو بود و به نسخهٔ نصب‌شده اعتماد دارید، آن را انتخاب کنید و پیام اندروید را تأیید کنید.",
-                                style = MaterialTheme.typography.bodyMedium,
-                            )
-                            Text("اگر سه‌نقطه یا این گزینه را ندیدید، از این مرحله رد شوید.", style = MaterialTheme.typography.bodyMedium)
-                            TextButton(onClick = { showRestricted = !showRestricted }) {
-                                Text(if (showRestricted) "بستن تصویر" else "دیدن تصویر سه‌نقطه")
-                            }
-                            if (showRestricted) GuideImage(restricted, onImage = { screenshot = it })
-                            TextButton(onClick = { scope.launch { guideListState.animateScrollToItem(3) } }) {
-                                Text("رفتن به مرحلهٔ مجوز پیامک")
-                            }
-                        }
-                    }
+                    GuideCard("۳. روی Permissions (مجوزها) بزنید.", listOf(restricted)) { screenshot = it }
                 }
                 item {
-                    GuideCard(
-                        "۳. مجوز پیامک",
-                        "در App info به Permissions بروید، روی SMS بزنید و Allow را انتخاب کنید. سپس به گلدپیامک برگردید و ارسال را دوباره تأیید کنید.",
-                        listOf(permissions, allow, allowed),
-                        onImage = { screenshot = it },
-                    )
+                    GuideCard("۴. روی SMS بزنید و مطمئن شوید Allow انتخاب شده است.", listOf(permissions, allowed)) { screenshot = it }
                 }
             }
         }
@@ -144,10 +114,9 @@ fun SmsPermissionHelpDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun GuideCard(title: String, description: String, images: List<GuideScreenshot>, onImage: (GuideScreenshot) -> Unit) {
+private fun GuideCard(description: String, images: List<GuideScreenshot>, onImage: (GuideScreenshot) -> Unit) {
     OutlinedCard(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
             Text(description, style = MaterialTheme.typography.bodyMedium)
             images.forEach { GuideImage(it, onImage) }
         }
@@ -164,6 +133,5 @@ private fun GuideImage(screenshot: GuideScreenshot, onImage: (GuideScreenshot) -
                 .clickable(onClickLabel = "بزرگ کردن تصویر") { onImage(screenshot) },
             contentScale = ContentScale.Fit,
         )
-        Text(screenshot.caption, style = MaterialTheme.typography.labelMedium)
     }
 }

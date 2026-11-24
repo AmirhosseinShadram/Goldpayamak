@@ -27,8 +27,8 @@ android {
         applicationId = "ir.goldpayamak.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = if (redesignPreview) 22 else if (offlineLicense) 13 else 9
-        versionName = if (redesignPreview) "1.8-preview14" else if (offlineLicense) "1.9.3" else if (demoMode) "1.8-demo" else "1.8"
+        versionCode = if (redesignPreview) 22 else if (offlineLicense) 14 else 9
+        versionName = if (redesignPreview) "1.8-preview14" else if (offlineLicense) "1.9.4" else if (demoMode) "1.8-demo" else "1.8"
         buildConfigField("boolean", "DEMO", demoMode.toString())
         buildConfigField("boolean", "OFFLINE_LICENSE", offlineLicense.toString())
         buildConfigField("String", "LICENSE_PUBLIC_KEY", "\"$licensePublicKey\"")

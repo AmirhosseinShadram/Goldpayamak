@@ -186,7 +186,6 @@ private fun NewRequestEntry(
     onStart: () -> Unit,
     onGold: () -> Unit,
 ) {
-    var showSmsGuide by remember { mutableStateOf(false) }
     val actionShape = RoundedCornerShape(14.dp)
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -229,11 +228,6 @@ private fun NewRequestEntry(
                 Text("ثبت طلایی", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             }
         }
-        item {
-            TextButton(onClick = { showSmsGuide = true }, modifier = Modifier.fillMaxWidth()) {
-                Text("راهنمای فعال کردن پیامک")
-            }
-        }
+
     }
-    if (showSmsGuide) SmsPermissionHelpDialog(onDismiss = { showSmsGuide = false })
 }
