@@ -99,7 +99,6 @@ private fun ReportGroupCard(g: ReportGroup) {
                 Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
                 StatusTag(requestStateLabel(r), requestColor(r))
             }
-            Text("کاربر: ${r.userName}", style = MaterialTheme.typography.labelMedium)
             Text(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
             val shownText = g.self?.text ?: g.recipients.firstOrNull()?.text.orEmpty()
             if (r.note.isNotBlank() && !shownText.contains(r.note)) Text("توضیحات: ${r.note}", style = MaterialTheme.typography.bodySmall)

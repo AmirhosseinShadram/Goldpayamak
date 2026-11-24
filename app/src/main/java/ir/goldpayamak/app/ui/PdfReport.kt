@@ -71,7 +71,6 @@ object PdfReport {
             val r = g.request
             val isGold = r.type == "GOLD"
             block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${plain(requestStateLabel(r))}", small)
-            block("کاربر: ${r.userName}", small)
             block(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "(بدون متن)"), bold, gap = 6f)
             val shownText = g.self?.text ?: g.recipients.firstOrNull()?.text.orEmpty()
             if (r.note.isNotBlank() && !shownText.contains(r.note)) block("توضیحات: ${r.note}", normal, gap = 6f)
