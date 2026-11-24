@@ -187,13 +187,9 @@ fun FormattedAmountHint(amount: String) {
 
 @Composable
 fun ContactSourcePicker(onPhone: () -> Unit, onApp: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { expanded = true }) { Text("انتخاب مخاطب") }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(text = { Text("مخاطبین گوشی") }, onClick = { expanded = false; onPhone() })
-            DropdownMenuItem(text = { Text("مخاطبین برنامه") }, onClick = { expanded = false; onApp() })
-        }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(onClick = onPhone, modifier = Modifier.weight(1f)) { Text("مخاطبین گوشی") }
+        OutlinedButton(onClick = onApp, modifier = Modifier.weight(1f)) { Text("مخاطبین برنامه") }
     }
 }
 
