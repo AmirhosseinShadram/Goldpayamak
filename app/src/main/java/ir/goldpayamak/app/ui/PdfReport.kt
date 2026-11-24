@@ -78,7 +78,8 @@ object PdfReport {
             for (m in g.recipients) {
                 val st = plain(statusLabel(m.status))
                 val amount = if (!isGold && m.transferAmount != r.transferAmount) "  —  ${m.transferAmount.format()}" else ""
-                block("${m.name}  ${m.phone}$amount  —  $st\nکاربر: ${r.userName}", normal, indent = 16, gap = 2f)
+                val sender = if (isGold) "" else "\nکاربر: ${r.userName}"
+                block("${m.name}  ${m.phone}$amount  —  $st$sender", normal, indent = 16, gap = 2f)
             }
             if (g.recipients.isEmpty()) block("(پیامکی به طرف‌ها ارسال نشده)", small, indent = 16)
             y += 6f
