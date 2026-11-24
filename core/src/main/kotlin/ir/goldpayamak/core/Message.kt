@@ -4,7 +4,7 @@ data class Party(val name: String, val phone: String)
 
 enum class Kind { ORIGINAL, CORRECTION, CANCEL }
 
-data class Planned(val party: Party, val isSelf: Boolean, val kind: Kind, val text: String)
+data class Planned(val party: Party, val isSelf: Boolean, val kind: Kind, val text: String, val transferAmount: TransferAmount? = null)
 
 /**
  * حلقهٔ طرف‌ها: [طرف۱، کاربر(طرف۲)، طرف۳، طرف۴، ...]
@@ -42,11 +42,11 @@ object MessageText {
 
     /**
      * (پیشوند اصلاحیه/کنسلی در خط اول، سپس توضیحات اگر باشد)، جمله‌ای که با نام گیرنده شروع می‌شود،
-     * یک خط خالی، قیمت به تومان
+     * یک خط خالی، مقدار حواله با واحد آن
      */
-    fun body(kind: Kind, sentence: String, price: Long, note: String = ""): String = buildString {
+    fun body(kind: Kind, sentence: String, amount: TransferAmount, note: String = ""): String = buildString {
         prefixAndNote(kind, note)
-        append(sentence).append("\n\n").append(Price.formatToman(price))
+        append(sentence).append("\n\n").append(amount.format())
     }
 
     internal fun StringBuilder.prefixAndNote(kind: Kind, note: String) {
@@ -60,34 +60,33 @@ object MessageText {
 }
 
 object Planner {
-    private fun build(kind: Kind, ring: List<Party>, price: Long, note: String = "", skip: (Party, Int) -> Boolean = { _, _ -> false }): List<Planned> =
-        ring.mapIndexedNotNull { i, p ->
-            if (skip(p, i)) null
-            else Planned(p, i == Ring.USER_INDEX, kind, MessageText.body(kind, Ring.sentence(ring, i), price, note))
+    private fun build(kind: Kind, ring: List<Party>, amount: TransferAmount, note: String = ""): List<Planned> =
+        ring.mapIndexed { i, p ->
+            Planned(p, i == Ring.USER_INDEX, kind, MessageText.body(kind, Ring.sentence(ring, i), amount, note), amount)
         }
 
-    fun original(ring: List<Party>, price: Long) =
-        build(Kind.ORIGINAL, ring, price)
+    fun original(ring: List<Party>, amount: TransferAmount) =
+        build(Kind.ORIGINAL, ring, amount)
 
-    fun cancel(ring: List<Party>, price: Long, note: String = "") =
-        build(Kind.CANCEL, ring, price, note)
+    fun cancel(ring: List<Party>, amount: TransferAmount, note: String = "") =
+        build(Kind.CANCEL, ring, amount, note)
 
     /**
      * اصلاحیه: همهٔ طرف‌های حلقهٔ جدید متن جدید می‌گیرند (قدیمی‌ها «اصلاحیه»، تازه‌واردها پیام اصلی)،
      * و کسانی که حذف شده‌اند پیام «کنسلی» با متن قبلی خودشان می‌گیرند.
      */
-    fun correction(oldRing: List<Party>, oldPrice: Long, newRing: List<Party>, newPrice: Long, note: String = ""): List<Planned> {
+    fun correction(oldRing: List<Party>, oldAmount: TransferAmount, newRing: List<Party>, newAmount: TransferAmount, note: String = ""): List<Planned> {
         val oldPhones = oldRing.filterIndexed { i, _ -> i != Ring.USER_INDEX }.map { it.phone }.toSet()
         val newPhones = newRing.filterIndexed { i, _ -> i != Ring.USER_INDEX }.map { it.phone }.toSet()
         val result = ArrayList<Planned>()
         newRing.forEachIndexed { i, p ->
             val self = i == Ring.USER_INDEX
             val kind = if (self || p.phone in oldPhones) Kind.CORRECTION else Kind.ORIGINAL
-            result += Planned(p, self, kind, MessageText.body(kind, Ring.sentence(newRing, i), newPrice, if (kind == Kind.CORRECTION) note else ""))
+            result += Planned(p, self, kind, MessageText.body(kind, Ring.sentence(newRing, i), newAmount, if (kind == Kind.CORRECTION) note else ""), newAmount)
         }
         oldRing.forEachIndexed { i, p ->
             if (i != Ring.USER_INDEX && p.phone !in newPhones) {
-                result += Planned(p, false, Kind.CANCEL, MessageText.body(Kind.CANCEL, Ring.sentence(oldRing, i), oldPrice, note))
+                result += Planned(p, false, Kind.CANCEL, MessageText.body(Kind.CANCEL, Ring.sentence(oldRing, i), oldAmount, note), oldAmount)
             }
         }
         return result

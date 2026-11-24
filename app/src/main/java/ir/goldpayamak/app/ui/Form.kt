@@ -35,10 +35,11 @@ private fun label(j: Int) = "طرف ${Digits.toPersian((if (j == 0) 1 else j + 2
 fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val ctx = LocalContext.current
     val slots = remember { mutableStateListOf(Slot(), Slot()) }
+    var gramsText by remember { mutableStateOf("") }
     var priceText by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var oldRing by remember { mutableStateOf<List<Party>?>(null) }
-    var oldPrice by remember { mutableLongStateOf(0L) }
+    var oldAmount by remember { mutableStateOf<TransferAmount?>(null) }
     var pickTarget by remember { mutableStateOf<Slot?>(null) }
     var appPickTarget by remember { mutableStateOf<Slot?>(null) }
     var confirm by remember { mutableStateOf(false) }
@@ -50,10 +51,11 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             val ring = vm.ringOf(parentId)
             val req = vm.requestOnce(parentId)
             oldRing = ring
-            oldPrice = req?.price ?: 0
+            oldAmount = req?.transferAmount
             slots.clear()
             ring.forEachIndexed { i, p -> if (i != Ring.USER_INDEX) slots.add(Slot(p.name, p.phone)) }
-            priceText = req?.price?.toString() ?: ""
+            priceText = (oldAmount as? TransferAmount.Toman)?.value?.toString().orEmpty()
+            gramsText = (oldAmount as? TransferAmount.GoldGrams)?.value.orEmpty()
         }
     }
 
@@ -82,16 +84,26 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         }
     }
     val price = Price.parse(priceText)
-    val errors = Planner.validate(ring) + (if (price == null) listOf("قیمت را به عدد (بزرگ‌تر از صفر) وارد کنید") else emptyList())
-    val plan = if (errors.isEmpty() && price != null) {
-        if (parentId == null) Planner.original(ring, price)
-        else oldRing?.let { Planner.correction(it, oldPrice, ring, price, note) }
+    val grams = TransferAmount.GoldGrams.parse(gramsText)
+    val amount = when {
+        gramsText.isBlank() -> price?.let { TransferAmount.Toman(it) }
+        priceText.isBlank() -> grams
+        else -> null
+    }
+    val errors = Planner.validate(ring) + if (amount == null) {
+        listOf("فقط یکی از دو مقدار تومان یا گرم طلا را به‌صورت عدد بزرگ‌تر از صفر وارد کنید")
+    } else emptyList()
+    val previous = oldAmount
+    val plan = if (errors.isEmpty() && amount != null) {
+        if (parentId == null) Planner.original(ring, amount)
+        else if (previous != null) oldRing?.let { Planner.correction(it, previous, ring, amount, note) }
+        else null
     } else null
 
     var simChoices by remember { mutableStateOf<List<Sim>?>(null) }
 
     fun doSend() {
-        val p = price ?: return
+        val p = amount ?: return
         sending = true
         if (parentId == null) vm.sendNew(ring, p, onDone) else vm.sendCorrection(parentId, ring, p, note, onDone)
     }
@@ -161,9 +173,20 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             if (slots.size + 1 < Ring.MAX_PARTIES) OutlinedButton(onClick = { slots.add(Slot()) }, Modifier.fillMaxWidth()) { Text("افزودن طرف") }
         }
         item {
-            OutlinedTextField(priceText, { priceText = it }, label = { Text("قیمت به تومان (یکسان برای همهٔ طرف‌ها)") }, singleLine = true,
+            OutlinedTextField(priceText, {
+                priceText = it
+                if (it.isNotBlank()) gramsText = ""
+            }, label = { Text("قیمت به تومان") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
                 supportingText = { price?.let { Text(Price.formatToman(it)) } })
+        }
+        item {
+            OutlinedTextField(gramsText, {
+                gramsText = it
+                if (it.isNotBlank()) priceText = ""
+            }, label = { Text("وزن به گرم طلا") }, singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
+                supportingText = { grams?.let { Text(it.format()) } })
         }
         if (errors.isNotEmpty()) item { errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
         permMsg?.let { m ->

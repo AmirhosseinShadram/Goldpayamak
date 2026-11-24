@@ -18,7 +18,6 @@ import ir.goldpayamak.app.data.Status
 import ir.goldpayamak.app.statusLabel
 import ir.goldpayamak.core.Jalali
 import ir.goldpayamak.core.Phone
-import ir.goldpayamak.core.Price
 
 @Composable
 fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
@@ -117,6 +116,7 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("برای همهٔ طرف‌ها پیامک «کنسلی» ارسال می‌شود. ادامه می‌دهید؟")
+                    if (!isGold) Text(latest.transferAmount.format(), style = MaterialTheme.typography.titleSmall)
                     OutlinedTextField(cancelNote, { cancelNote = it }, label = { Text("توضیحات کنسلی (در پیامک هم می‌رود)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
                 }
             },

@@ -10,6 +10,7 @@ import ir.goldpayamak.core.Party
 import ir.goldpayamak.core.Planned
 import ir.goldpayamak.core.Planner
 import ir.goldpayamak.core.Ring
+import ir.goldpayamak.core.TransferAmount
 
 class Repo(private val ctx: Context) {
     private val db = AppDb.get(ctx)
@@ -20,16 +21,16 @@ class Repo(private val ctx: Context) {
     suspend fun ringOf(requestId: Long): List<Party> = dao.partiesOnce(requestId).toRing()
 
     /** درخواست جدید (اصلی) */
-    suspend fun createOriginal(userName: String, ring: List<Party>, price: Long): Long =
-        save(Kind.ORIGINAL, null, userName, ring, price, Planner.original(ring, price))
+    suspend fun createOriginal(userName: String, ring: List<Party>, amount: TransferAmount): Long =
+        saveTransfer(Kind.ORIGINAL, null, userName, ring, amount, Planner.original(ring, amount))
 
     /** اصلاحیه روی آخرین نسخهٔ فعال */
-    suspend fun createCorrection(parentId: Long, userName: String, newRing: List<Party>, newPrice: Long, note: String = ""): Long {
+    suspend fun createCorrection(parentId: Long, userName: String, newRing: List<Party>, newAmount: TransferAmount, note: String = ""): Long {
         val parent = dao.requestOnce(parentId) ?: error("درخواست پیدا نشد")
         check(dao.childCount(parentId) == 0) { "فقط آخرین نسخه قابل اصلاح است" }
         val oldRing = ringOf(parentId)
-        val plan = Planner.correction(oldRing, parent.price, newRing, newPrice, note)
-        return save(Kind.CORRECTION, parent, userName, newRing, newPrice, plan, note = note.trim())
+        val plan = Planner.correction(oldRing, parent.transferAmount, newRing, newAmount, note)
+        return saveTransfer(Kind.CORRECTION, parent, userName, newRing, newAmount, plan, note.trim())
     }
 
     suspend fun goldOf(requestId: Long): GoldData {
@@ -57,27 +58,39 @@ class Repo(private val ctx: Context) {
             return save(Kind.CANCEL, parent, userName, listOf(old.party), old.amount, Gold.cancel(userName, old, note), "GOLD", old.rate, old.side.name, note.trim())
         }
         val ring = ringOf(parentId)
-        return save(Kind.CANCEL, parent, userName, ring, parent.price, Planner.cancel(ring, parent.price, note), note = note.trim())
+        val amount = parent.transferAmount
+        return saveTransfer(Kind.CANCEL, parent, userName, ring, amount, Planner.cancel(ring, amount, note), note.trim())
     }
+
+    private suspend fun saveTransfer(
+        kind: Kind, parent: RequestEntity?, userName: String, ring: List<Party>,
+        amount: TransferAmount, plan: List<Planned>, note: String = "",
+    ): Long = save(
+        kind, parent, userName, ring, (amount as? TransferAmount.Toman)?.value ?: 0,
+        plan, note = note, goldGrams = (amount as? TransferAmount.GoldGrams)?.value,
+    )
 
     private suspend fun save(
         kind: Kind, parent: RequestEntity?, userName: String, ring: List<Party>, price: Long, plan: List<Planned>,
-        type: String = "RING", rate: Long = 0, side: String = "", note: String = "",
+        type: String = "RING", rate: Long = 0, side: String = "", note: String = "", goldGrams: String? = null,
     ): Long = db.withTransaction {
         val now = System.currentTimeMillis()
         val status = if (kind == Kind.CANCEL) Status.REQ_RECORD else Status.REQ_ACTIVE
         val id = dao.insertRequest(
             RequestEntity(rootId = parent?.rootId ?: 0, parentId = parent?.id, kind = kind.name, price = price,
-                userName = userName, createdAt = now, status = status, type = type, rate = rate, side = side, note = note)
+                userName = userName, createdAt = now, status = status, type = type, rate = rate, side = side, note = note, goldGrams = goldGrams)
         )
         if (parent == null) dao.setRoot(id, id)
         dao.insertParties(ring.mapIndexed { i, p ->
             PartyEntity(requestId = id, position = i, name = p.name, phone = p.phone, isSelf = i == Ring.USER_INDEX)
         })
         dao.insertMessages(plan.map {
+            val messageAmount = it.transferAmount ?: TransferAmount.Toman(price)
             MessageEntity(
                 requestId = id, name = it.party.name, phone = it.party.phone, kind = it.kind.name, text = it.text,
-                price = price, status = if (it.isSelf) Status.SELF else Status.PENDING, createdAt = now, updatedAt = now,
+                price = (messageAmount as? TransferAmount.Toman)?.value ?: 0,
+                goldGrams = (messageAmount as? TransferAmount.GoldGrams)?.value,
+                status = if (it.isSelf) Status.SELF else Status.PENDING, createdAt = now, updatedAt = now,
             )
         })
         if (parent != null && parent.status == Status.REQ_ACTIVE) {

@@ -16,7 +16,6 @@ import ir.goldpayamak.app.statusLabel
 import ir.goldpayamak.core.Digits
 import ir.goldpayamak.core.JDate
 import ir.goldpayamak.core.Jalali
-import ir.goldpayamak.core.Price
 import java.time.LocalDate
 
 @Composable
@@ -103,7 +102,10 @@ private fun ReportGroupCard(g: ReportGroup) {
                 g.recipients.forEach { m ->
                     HorizontalDivider()
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
+                        Column(Modifier.weight(1f)) {
+                            Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
+                            if (r.type == "RING") Text(m.transferAmount.format(), style = MaterialTheme.typography.bodySmall)
+                        }
                         Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
                     }
                 }

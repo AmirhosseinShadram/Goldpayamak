@@ -72,14 +72,14 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     // ---- درخواست‌ها ----
-    fun sendNew(ring: List<Party>, price: Long, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createOriginal(displayName, ring, price)
+    fun sendNew(ring: List<Party>, amount: TransferAmount, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createOriginal(displayName, ring, amount)
         SendService.start(app, id)
         onDone(id)
     }
 
-    fun sendCorrection(parentId: Long, ring: List<Party>, price: Long, note: String, onDone: (Long) -> Unit) = guarded {
-        val id = repo.createCorrection(parentId, displayName, ring, price, note)
+    fun sendCorrection(parentId: Long, ring: List<Party>, amount: TransferAmount, note: String, onDone: (Long) -> Unit) = guarded {
+        val id = repo.createCorrection(parentId, displayName, ring, amount, note)
         SendService.start(app, id)
         onDone(id)
     }

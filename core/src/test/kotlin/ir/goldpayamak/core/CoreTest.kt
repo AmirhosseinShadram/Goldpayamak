@@ -36,11 +36,11 @@ class CoreTest {
     }
 
     @Test fun bodyLayout() {
-        assertEquals("جمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.ORIGINAL, "جمله", 120000))
-        assertEquals("❗❗ اصلاحیه\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", 120000))
-        assertEquals("❗❗ اصلاحیه\nتوضیحات: قیمت عوض شد\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", 120000, "  قیمت عوض شد "))
-        assertEquals("❌❌ کنسلی\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CANCEL, "جمله", 120000, " "))
-        assertEquals("جمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.ORIGINAL, "جمله", 120000, "نباید بیاید"))
+        assertEquals("جمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.ORIGINAL, "جمله", TransferAmount.Toman(120000)))
+        assertEquals("❗❗ اصلاحیه\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", TransferAmount.Toman(120000)))
+        assertEquals("❗❗ اصلاحیه\nتوضیحات: قیمت عوض شد\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CORRECTION, "جمله", TransferAmount.Toman(120000), "  قیمت عوض شد "))
+        assertEquals("❌❌ کنسلی\nجمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.CANCEL, "جمله", TransferAmount.Toman(120000), " "))
+        assertEquals("جمله\n\n۱۲۰,۰۰۰ تومان", MessageText.body(Kind.ORIGINAL, "جمله", TransferAmount.Toman(120000), "نباید بیاید"))
     }
 
     @Test fun priceFormatAndParse() {
@@ -103,7 +103,7 @@ class CoreTest {
         val old = listOf(Party("A", "0911"), Party("Me", ""), Party("C", "0913"), Party("D", "0914"))
         // D حذف، E اضافه
         val new = listOf(Party("A", "0911"), Party("Me", ""), Party("C", "0913"), Party("E", "0915"))
-        val plan = Planner.correction(old, 100, new, 200, "ببخشید")
+        val plan = Planner.correction(old, TransferAmount.Toman(100), new, TransferAmount.Toman(200), "ببخشید")
         val byPhone = plan.associateBy { it.party.phone + it.kind }
         assertEquals(Kind.CORRECTION, byPhone["0911CORRECTION"]!!.kind)
         assertEquals(Kind.ORIGINAL, byPhone["0915ORIGINAL"]!!.kind)
@@ -119,7 +119,7 @@ class CoreTest {
 
     @Test fun cancelPlan() {
         val r = listOf(Party("A", "0911"), Party("Me", ""), Party("C", "0913"))
-        val plan = Planner.cancel(r, 5000)
+        val plan = Planner.cancel(r, TransferAmount.Toman(5000))
         assertEquals(3, plan.size)
         assertTrue(plan.all { it.kind == Kind.CANCEL })
     }
@@ -155,5 +155,35 @@ class CoreTest {
     @Test fun searchNormalize() {
         assertEquals("علی ۱", TextNorm.fa("علي ١").replace("1", "۱"))
         assertEquals("0912", TextNorm.fa("۰۹۱۲"))
+    }
+}
+
+class TransferAmountTest {
+    @Test fun parsesGoldWeightWithoutRounding() {
+        val gold = requireNotNull(TransferAmount.GoldGrams.parse("۱۲٫۰۳۵۰"))
+        assertEquals("۱۲٫۰۳۵ گرم طلا", gold.format())
+        assertEquals(gold, TransferAmount.GoldGrams.parse("١٢.٠٣٥"))
+        listOf("", "0", "-1", "1e3", "1,5", "1.2.3").forEach {
+            assertNull(TransferAmount.GoldGrams.parse(it))
+        }
+    }
+
+    @Test fun correctionUsesPreviousAmountOnlyForRemovedRecipient() {
+        val first = Party("الف", "09111111111")
+        val self = Party("من", "")
+        val removed = Party("ب", "09222222222")
+        val added = Party("ج", "09333333333")
+        val oldRing = listOf(first, self, removed)
+        val newRing = listOf(first, self, added)
+        val gold = requireNotNull(TransferAmount.GoldGrams.parse("0.125"))
+        val toman = TransferAmount.Toman(5000)
+        val plan = Planner.correction(oldRing, gold, newRing, toman)
+        assertTrue(Planner.original(oldRing, gold).all { it.text.endsWith("۰٫۱۲۵ گرم طلا") })
+        assertTrue(Planner.cancel(oldRing, gold).all { it.text.endsWith("۰٫۱۲۵ گرم طلا") })
+        assertTrue(plan.filter { it.party != removed }.all { it.transferAmount == toman && it.text.endsWith("۵,۰۰۰ تومان") })
+        val cancellation = plan.single { it.party == removed }
+        assertEquals(Kind.CANCEL, cancellation.kind)
+        assertEquals(gold, cancellation.transferAmount)
+        assertTrue(cancellation.text.endsWith("۰٫۱۲۵ گرم طلا"))
     }
 }

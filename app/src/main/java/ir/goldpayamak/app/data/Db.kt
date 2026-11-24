@@ -3,6 +3,7 @@ package ir.goldpayamak.app.data
 import android.content.Context
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
+import ir.goldpayamak.core.TransferAmount
 
 object Status {
     const val PENDING = "PENDING"
@@ -43,7 +44,11 @@ data class RequestEntity(
     @ColumnInfo(defaultValue = "''") val side: String = "",
     /** توضیحات اصلاحیه/کنسلی (در پیامک هم فرستاده می‌شود) */
     @ColumnInfo(defaultValue = "''") val note: String = "",
-)
+    val goldGrams: String? = null,
+) {
+    val transferAmount: TransferAmount
+        get() = goldGrams?.let { requireNotNull(TransferAmount.GoldGrams.parse(it)) } ?: TransferAmount.Toman(price)
+}
 
 @Entity(tableName = "parties", indices = [Index("requestId")])
 data class PartyEntity(
@@ -71,7 +76,11 @@ data class MessageEntity(
     val failed: Int = 0,
     val createdAt: Long,
     val updatedAt: Long,
-)
+    val goldGrams: String? = null,
+) {
+    val transferAmount: TransferAmount
+        get() = goldGrams?.let { requireNotNull(TransferAmount.GoldGrams.parse(it)) } ?: TransferAmount.Toman(price)
+}
 
 @Dao
 interface AppDao {
@@ -223,9 +232,30 @@ private val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
     }
 }
 
+private val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) {
+    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE requests ADD COLUMN goldGrams TEXT")
+        db.execSQL("ALTER TABLE messages ADD COLUMN goldGrams TEXT")
+        // پیام کنسلیِ طرف حذف‌شده، مبلغ نسخهٔ پیش از اصلاحیه را دارد.
+        db.execSQL("""
+            UPDATE messages
+            SET price = (
+                SELECT parent.price FROM requests AS correction
+                JOIN requests AS parent ON parent.id = correction.parentId
+                WHERE correction.id = messages.requestId
+            )
+            WHERE kind = 'CANCEL' AND requestId IN (
+                SELECT correction.id FROM requests AS correction
+                JOIN requests AS parent ON parent.id = correction.parentId
+                WHERE correction.kind = 'CORRECTION' AND correction.type = 'RING'
+            )
+        """.trimIndent())
+    }
+}
+
 @Database(
     entities = [ContactEntity::class, RequestEntity::class, PartyEntity::class, MessageEntity::class],
-    version = 3,
+    version = 4,
     exportSchema = false,
 )
 abstract class AppDb : RoomDatabase() {
@@ -235,7 +265,7 @@ abstract class AppDb : RoomDatabase() {
         @Volatile private var inst: AppDb? = null
         fun get(ctx: Context): AppDb = inst ?: synchronized(this) {
             inst ?: Room.databaseBuilder(ctx.applicationContext, AppDb::class.java, "goldpayamak.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build().also { inst = it }
         }
     }

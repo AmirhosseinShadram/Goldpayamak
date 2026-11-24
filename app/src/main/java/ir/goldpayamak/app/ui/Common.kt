@@ -13,7 +13,6 @@ import ir.goldpayamak.app.data.Status
 import ir.goldpayamak.app.kindLabel
 import ir.goldpayamak.app.statusLabel
 import ir.goldpayamak.core.Jalali
-import ir.goldpayamak.core.Price
 
 /** رنگ اصلاحیه: زرد/کهربایی (روی زمینهٔ روشن خوانا) */
 val AmberColor = Color(0xFFB26A00)
@@ -46,7 +45,7 @@ fun MessageCard(m: MessageEntity, showText: Boolean = true) {
                 Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
             }
             Text(
-                "${kindLabel(m.kind)} • ${Jalali.fromMillis(m.createdAt).format()} ${Jalali.timeOf(m.createdAt)} • قیمت ${Price.formatToman(m.price)}",
+                "${kindLabel(m.kind)} • ${Jalali.fromMillis(m.createdAt).format()} ${Jalali.timeOf(m.createdAt)} • ${m.transferAmount.format()}",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             if (showText) Text(plain(m.text), style = MaterialTheme.typography.bodyMedium)
@@ -114,7 +113,10 @@ fun ActionDialog(a: RequestEntity, msgs: List<MessageEntity>, onDismiss: () -> U
                     Text("وضعیت ارسال", style = MaterialTheme.typography.titleSmall)
                     sent.forEach { m ->
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
+                            Column(Modifier.weight(1f)) {
+                                Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
+                                if (a.type == "RING") Text(m.transferAmount.format(), style = MaterialTheme.typography.bodySmall)
+                            }
                             Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
                         }
                     }

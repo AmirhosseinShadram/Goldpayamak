@@ -72,14 +72,15 @@ object PdfReport {
             y += 8f
             val r = g.request
             val isGold = r.type == "GOLD"
-            val priceText = if (isGold) "مبلغ ${Price.formatToman(r.price)} • فی ${Price.formatToman(r.rate)}" else "قیمت ${Price.formatToman(r.price)}"
+            val priceText = if (isGold) "مبلغ ${Price.formatToman(r.price)} • فی ${Price.formatToman(r.rate)}" else r.transferAmount.format()
             block("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)} • ${plain(requestStateLabel(r))} • $priceText", small)
             block(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "(بدون متن)"), bold, gap = 6f)
             val shownText = g.self?.text ?: g.recipients.firstOrNull()?.text.orEmpty()
             if (r.note.isNotBlank() && !shownText.contains(r.note)) block("توضیحات: ${r.note}", normal, gap = 6f)
             for (m in g.recipients) {
                 val st = plain(statusLabel(m.status))
-                block("${m.name}  ${m.phone}  —  $st", normal, indent = 16, gap = 2f)
+                val amount = if (isGold) "" else "  —  ${m.transferAmount.format()}"
+                block("${m.name}  ${m.phone}$amount  —  $st", normal, indent = 16, gap = 2f)
             }
             if (g.recipients.isEmpty()) block("(پیامکی به طرف‌ها ارسال نشده)", small, indent = 16)
             y += 6f
