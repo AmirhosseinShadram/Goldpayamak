@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package ir.goldpayamak.app.ui
 
 import android.Manifest
@@ -37,6 +39,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     val slots = remember { mutableStateListOf(Slot(), Slot()) }
     var senderName by remember(parentId) { mutableStateOf(vm.defaultSenderName) }
     var gramsText by remember { mutableStateOf("") }
+    var goldUnit by remember { mutableStateOf(false) }
     var priceText by remember { mutableStateOf("") }
     var note by remember { mutableStateOf("") }
     var oldRing by remember { mutableStateOf<List<Party>?>(null) }
@@ -54,6 +57,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             oldRing = ring
             senderName = ring.getOrNull(Ring.USER_INDEX)?.name ?: vm.defaultSenderName
             oldAmount = req?.transferAmount
+            goldUnit = oldAmount is TransferAmount.GoldGrams
             slots.clear()
             ring.forEachIndexed { i, p -> if (i != Ring.USER_INDEX) slots.add(Slot(p.name, p.phone)) }
             priceText = (oldAmount as? TransferAmount.Toman)?.value?.toString().orEmpty()
@@ -87,14 +91,10 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     }
     val price = Price.parse(priceText)
     val grams = TransferAmount.GoldGrams.parse(gramsText)
-    val amount = when {
-        gramsText.isBlank() -> price?.let { TransferAmount.Toman(it) }
-        priceText.isBlank() -> grams
-        else -> null
-    }
+    val amount = if (goldUnit) grams else price?.let { TransferAmount.Toman(it) }
     val errors = Planner.validate(ring) +
         listOfNotNull("نام طرف ۲ را وارد کنید".takeIf { senderName.isBlank() }) + if (amount == null) {
-        listOf("فقط یکی از دو مقدار تومان یا گرم طلا را به‌صورت عدد بزرگ‌تر از صفر وارد کنید")
+        listOf("مقدار حواله را به‌صورت عدد بزرگ‌تر از صفر وارد کنید")
     } else emptyList()
     val previous = oldAmount
     val plan = if (errors.isEmpty() && amount != null) {
@@ -146,7 +146,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
         // ترتیب نمایش: طرف ۱، طرف ۲ (شما)، طرف ۳، ...
         items(slots.size + 1) { row ->
             if (row == 1) {
-                Card(Modifier.fillMaxWidth()) {
+                OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("طرف ۲ (شما)", style = MaterialTheme.typography.titleSmall)
                         SenderNameField(senderName, { senderName = it }, vm.senderNames, vm::removeSender)
@@ -155,7 +155,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             } else {
                 val j = if (row == 0) 0 else row - 1
                 val slot = slots[j]
-                Card(Modifier.fillMaxWidth()) {
+                OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Text(label(j), style = MaterialTheme.typography.titleSmall)
@@ -164,13 +164,13 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                         OutlinedTextField(slot.name, { slot.name = it }, label = { Text("نام") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                         OutlinedTextField(slot.phone, { slot.phone = it }, label = { Text("شمارهٔ موبایل") }, singleLine = true,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(onClick = {
+                        ContactSourcePicker(
+                            onPhone = {
                                 pickTarget = slot
                                 pickContact.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI))
-                            }) { Text("مخاطبین گوشی") }
-                            OutlinedButton(onClick = { appPickTarget = slot }) { Text("مخاطبین برنامه") }
-                        }
+                            },
+                            onApp = { appPickTarget = slot },
+                        )
                     }
                 }
             }
@@ -179,20 +179,27 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             if (slots.size + 1 < Ring.MAX_PARTIES) OutlinedButton(onClick = { slots.add(Slot()) }, Modifier.fillMaxWidth()) { Text("افزودن طرف") }
         }
         item {
-            OutlinedTextField(priceText, {
-                priceText = it
-                if (it.isNotBlank()) gramsText = ""
-            }, label = { Text("قیمت به تومان") }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
-                supportingText = { price?.let { FormattedAmountHint(Price.formatToman(it)) } })
-        }
-        item {
-            OutlinedTextField(gramsText, {
-                gramsText = it
-                if (it.isNotBlank()) priceText = ""
-            }, label = { Text("وزن به گرم طلا") }, singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
-                supportingText = { grams?.let { FormattedAmountHint(it.format()) } })
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("مقدار حواله", style = MaterialTheme.typography.titleMedium)
+                SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                    listOf("تومان", "گرم طلا").forEachIndexed { index, unit ->
+                        SegmentedButton(
+                            selected = goldUnit == (index == 1),
+                            onClick = { goldUnit = index == 1 },
+                            shape = SegmentedButtonDefaults.itemShape(index, 2),
+                        ) { Text(unit) }
+                    }
+                }
+                if (goldUnit) {
+                    OutlinedTextField(gramsText, { gramsText = it }, label = { Text("وزن به گرم طلا") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth(),
+                        supportingText = { grams?.let { FormattedAmountHint(it.format()) } })
+                } else {
+                    OutlinedTextField(priceText, { priceText = it }, label = { Text("مبلغ به تومان") }, singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
+                        supportingText = { price?.let { FormattedAmountHint(Price.formatToman(it)) } })
+                }
+            }
         }
         if (errors.isNotEmpty()) item { errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
         permMsg?.let { m ->
@@ -213,38 +220,18 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                 }
             }
         }
-        plan?.let { pl ->
-            item { Text("پیش‌نمایش پیامک‌ها", style = MaterialTheme.typography.titleMedium) }
-            items(pl) { p ->
-                Card(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(
-                            (if (p.isSelf) "${p.party.name} (شما) — فقط ثبت می‌شود" else "${p.party.name}  ${p.party.phone}") +
-                                if (p.kind == Kind.CANCEL) "  [کنسلی]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه]" else "",
-                            style = MaterialTheme.typography.labelLarge,
-                        )
-                        Text(p.text, style = MaterialTheme.typography.bodyMedium)
-                    }
-                }
-            }
-        }
         item {
             Button(onClick = { confirm = true }, enabled = plan != null && !sending, modifier = Modifier.fillMaxWidth()) {
-                Text(if (parentId == null) "ارسال و ثبت" else "ارسال اصلاحیه")
+                Text("پیش‌نمایش پیامک")
             }
         }
     }
 
-    if (confirm && plan != null) {
-        val n = plan.count { !it.isSelf }
-        AlertDialog(
-            onDismissRequest = { confirm = false },
-            title = { Text("تأیید ارسال") },
-            text = { Text("$n پیامک از سیم‌کارت این گوشی ارسال می‌شود (هزینه از اعتبار سیم‌کارت شما کم می‌شود). ادامه می‌دهید؟") },
-            confirmButton = { TextButton(onClick = { confirm = false; requestSend() }) { Text("ارسال") } },
-            dismissButton = { TextButton(onClick = { confirm = false }) { Text("انصراف") } },
-        )
-    }
+    if (confirm && plan != null) MessagePreviewDialog(
+        plan = plan,
+        onDismiss = { confirm = false },
+        onSend = { confirm = false; requestSend() },
+    )
 
     simChoices?.let { sims ->
         AlertDialog(

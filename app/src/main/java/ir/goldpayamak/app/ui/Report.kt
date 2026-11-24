@@ -86,12 +86,13 @@ fun ReportScreen(vm: AppViewModel) {
 private fun ReportGroupCard(g: ReportGroup) {
     var open by remember { mutableStateOf(false) }
     val r = g.request
-    Card(Modifier.fillMaxWidth().clickable { open = !open }) {
+    OutlinedCard(Modifier.fillMaxWidth().clickable { open = !open }) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
-                Text(requestStateLabel(r), style = MaterialTheme.typography.labelMedium, color = requestColor(r))
+                StatusTag(requestStateLabel(r), requestColor(r))
             }
+            Text(r.transferAmount.format(), style = MaterialTheme.typography.titleMedium)
             Text(plain(g.self?.text ?: g.recipients.firstOrNull()?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
             val shownText = g.self?.text ?: g.recipients.firstOrNull()?.text.orEmpty()
             if (r.note.isNotBlank() && !shownText.contains(r.note)) Text("توضیحات: ${r.note}", style = MaterialTheme.typography.bodySmall)
@@ -106,7 +107,7 @@ private fun ReportGroupCard(g: ReportGroup) {
                             Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
                             if (r.type == "RING") Text(m.transferAmount.format(), style = MaterialTheme.typography.bodySmall)
                         }
-                        Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
+                        StatusTag(statusLabel(m.status), statusColor(m.status))
                     }
                 }
             }

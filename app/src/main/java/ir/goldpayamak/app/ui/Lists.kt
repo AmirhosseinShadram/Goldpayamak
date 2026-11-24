@@ -40,13 +40,14 @@ fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
         LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(list, key = { it.id }) { r ->
                 val acts = actionsByRoot[r.id].orEmpty()
-                Card(Modifier.fillMaxWidth()) {
+                OutlinedCard(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         Column(Modifier.fillMaxWidth().clickable { onOpen(r.id) }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
-                                Text(chainState(acts), color = chainColor(acts), style = MaterialTheme.typography.labelMedium)
+                                StatusTag(chainState(acts), chainColor(acts))
                             }
+                            Text(r.transferAmount.format(), style = MaterialTheme.typography.titleMedium)
                             // فقط پیام اول؛ با زدن روی آن می‌شود اصلاحیه یا کنسلی کرد
                             Text(plain(mainMessage(r, msgsByReq[r.id])?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
                         }
@@ -81,7 +82,7 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            Card(Modifier.fillMaxWidth()) {
+            OutlinedCard(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${Jalali.fromMillis(root.createdAt).format()}  ${Jalali.timeOf(root.createdAt)}", style = MaterialTheme.typography.labelMedium)
@@ -104,7 +105,7 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
         items(recipients, key = { it.id }) { RecipientRow(it) }
         if (actions.isNotEmpty()) {
             item { Text("کارهای انجام‌شده", style = MaterialTheme.typography.titleSmall) }
-            item { Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(horizontal = 14.dp)) { ActionRows(actions) { shown = it } } } }
+            item { OutlinedCard(Modifier.fillMaxWidth()) { Column(Modifier.padding(horizontal = 14.dp)) { ActionRows(actions) { shown = it } } } }
         }
     }
     shown?.let { a -> ActionDialog(a, byReq[a.id].orEmpty()) { shown = null } }
@@ -129,10 +130,10 @@ fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit,
 /** وضعیت ارسال یک طرف: نام، شماره و وضعیت (متن پیامک نمایش داده نمی‌شود). */
 @Composable
 private fun RecipientRow(m: ir.goldpayamak.app.data.MessageEntity) {
-    Card(Modifier.fillMaxWidth()) {
+    OutlinedCard(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.titleSmall)
-            Text(statusLabel(m.status), color = statusColor(m.status), style = MaterialTheme.typography.labelMedium)
+            StatusTag(statusLabel(m.status), statusColor(m.status))
         }
     }
 }

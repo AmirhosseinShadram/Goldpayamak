@@ -114,16 +114,16 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                 FilterChip(selected = side == s, onClick = { side = s }, label = { Text(s.word) })
             }
         }
-        Card(Modifier.fillMaxWidth()) {
+        OutlinedCard(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("گیرندهٔ پیامک", style = MaterialTheme.typography.titleSmall)
                 OutlinedTextField(slot.name, { slot.name = it }, label = { Text("نام") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 OutlinedTextField(slot.phone, { slot.phone = it }, label = { Text("شمارهٔ موبایل") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone), modifier = Modifier.fillMaxWidth())
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { pickContact.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) }) { Text("مخاطبین گوشی") }
-                    OutlinedButton(onClick = { appPick = true }) { Text("مخاطبین برنامه") }
-                }
+                ContactSourcePicker(
+                    onPhone = { pickContact.launch(Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)) },
+                    onApp = { appPick = true },
+                )
             }
         }
         OutlinedTextField(amountText, { amountText = it }, label = { Text("مبلغ (تومان)") }, singleLine = true,
@@ -134,26 +134,15 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             supportingText = { rate?.let { FormattedAmountHint(Price.formatToman(it)) } })
         errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
         permMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        plan?.forEach { p ->
-            Card(Modifier.fillMaxWidth()) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("${p.party.name}  ${p.party.phone}" + if (p.kind == Kind.CANCEL) "  [کنسلی]" else if (p.kind == Kind.CORRECTION) "  [اصلاحیه]" else "",
-                        style = MaterialTheme.typography.labelLarge)
-                    Text(p.text, style = MaterialTheme.typography.bodyMedium)
-                }
-            }
-        }
         Button(onClick = { confirm = true }, enabled = plan != null && !sending, modifier = Modifier.fillMaxWidth()) {
-            Text(if (parentId == null) "ارسال و ثبت" else "ارسال اصلاحیه")
+            Text("پیش‌نمایش پیامک")
         }
     }
 
-    if (confirm && plan != null) AlertDialog(
-        onDismissRequest = { confirm = false },
-        title = { Text("تأیید ارسال") },
-        text = { Text("${plan.size} پیامک از سیم‌کارت این گوشی ارسال می‌شود. ادامه می‌دهید؟") },
-        confirmButton = { TextButton(onClick = { confirm = false; requestSend() }) { Text("ارسال") } },
-        dismissButton = { TextButton(onClick = { confirm = false }) { Text("انصراف") } },
+    if (confirm && plan != null) MessagePreviewDialog(
+        plan = plan,
+        onDismiss = { confirm = false },
+        onSend = { confirm = false; requestSend() },
     )
 
     simChoices?.let { sims ->

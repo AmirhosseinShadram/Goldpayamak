@@ -9,6 +9,10 @@ import ir.goldpayamak.app.data.RequestEntity
 import androidx.compose.ui.unit.dp
 import ir.goldpayamak.app.data.MessageEntity
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import ir.goldpayamak.core.Digits
+import ir.goldpayamak.core.Planned
 import ir.goldpayamak.app.data.Status
 import ir.goldpayamak.app.kindLabel
 import ir.goldpayamak.app.statusLabel
@@ -176,5 +180,54 @@ fun FormattedAmountHint(amount: String) {
         style = MaterialTheme.typography.bodyMedium,
         fontWeight = androidx.compose.ui.text.font.FontWeight.Medium,
         color = MaterialTheme.colorScheme.onSurface,
+    )
+}
+
+
+@Composable
+fun ContactSourcePicker(onPhone: () -> Unit, onApp: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }) { Text("انتخاب مخاطب") }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(text = { Text("مخاطبین گوشی") }, onClick = { expanded = false; onPhone() })
+            DropdownMenuItem(text = { Text("مخاطبین برنامه") }, onClick = { expanded = false; onApp() })
+        }
+    }
+}
+
+@Composable
+fun StatusTag(label: String, color: Color) {
+    Surface(color = color.copy(alpha = 0.10f), contentColor = color, shape = MaterialTheme.shapes.small) {
+        Text(label, Modifier.padding(horizontal = 8.dp, vertical = 4.dp), style = MaterialTheme.typography.labelMedium)
+    }
+}
+
+@Composable
+fun MessagePreviewDialog(plan: List<Planned>, onDismiss: () -> Unit, onSend: () -> Unit) {
+    val count = Digits.toPersian(plan.count { !it.isSelf }.toString())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("پیش‌نمایش پیامک") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text("$count پیامک از سیم‌کارت این گوشی ارسال می‌شود.", style = MaterialTheme.typography.bodySmall)
+                LazyColumn(Modifier.heightIn(max = 330.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(plan) { message ->
+                        OutlinedCard(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Text(
+                                    if (message.isSelf) "شما · فقط ثبت می‌شود" else message.party.phone,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                                Text(message.text, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { Button(onClick = onSend) { Text("ارسال و ثبت") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("بازگشت به فرم") } },
     )
 }

@@ -11,7 +11,8 @@ plugins {
 val activationUrl = (project.findProperty("activationUrl") as String?) ?: "https://CHANGE-ME.invalid"
 
 // نسخهٔ دمو (بدون کد فعال‌سازی، فقط برای آزمایش): -PdemoMode=true
-val demoMode = (project.findProperty("demoMode") as String?) == "true"
+val redesignPreview = (project.findProperty("redesignPreview") as String?) == "true"
+val demoMode = redesignPreview || (project.findProperty("demoMode") as String?) == "true"
 
 android {
     namespace = "ir.goldpayamak.app"
@@ -22,10 +23,10 @@ android {
         minSdk = 26
         targetSdk = 34
         versionCode = 9
-        versionName = if (demoMode) "1.8-demo" else "1.8"
+        versionName = if (redesignPreview) "1.8-preview" else if (demoMode) "1.8-demo" else "1.8"
         buildConfigField("boolean", "DEMO", demoMode.toString())
-        if (demoMode) applicationIdSuffix = ".demo"
-        manifestPlaceholders["appLabel"] = if (demoMode) "گلدپیامک (دمو)" else "گلدپیامک"
+        if (redesignPreview) applicationIdSuffix = ".redesign" else if (demoMode) applicationIdSuffix = ".demo"
+        manifestPlaceholders["appLabel"] = if (redesignPreview) "گلدپیامک (طرح جدید)" else if (demoMode) "گلدپیامک (دمو)" else "گلدپیامک"
         buildConfigField("String", "ACTIVATION_URL", "\"${activationUrl.trimEnd('/')}\"")
         // فقط اگر آدرس http (بدون TLS) داده شده باشد ترافیک متنی مجاز می‌شود
         manifestPlaceholders["cleartext"] = if (activationUrl.startsWith("http://")) "true" else "false"

@@ -4,6 +4,9 @@ package ir.goldpayamak.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import ir.goldpayamak.core.Jalali
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
@@ -69,7 +72,7 @@ fun MainShell(vm: AppViewModel) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(tabs[tab]) }) },
+        topBar = { TopAppBar(title = { Text(if (tab == 0) "گلدپیامک" else tabs[tab]) }) },
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { i, t ->
@@ -81,7 +84,13 @@ fun MainShell(vm: AppViewModel) {
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (tab) {
-                0 -> NewRequestEntry { push(Screen.Form(null)) }
+                0 -> NewRequestEntry(
+                    vm = vm,
+                    onStart = { push(Screen.Form(null)) },
+                    onGold = { push(Screen.GoldForm(null)) },
+                    onHistory = { tab = 2 },
+                    onOpen = { push(Screen.Detail(it)) },
+                )
                 1 -> GoldEntry(vm) { push(Screen.GoldForm(null)) }
                 2 -> HistoryScreen(vm) { push(Screen.Detail(it)) }
                 3 -> ContactsScreen(vm) { n, p -> push(Screen.ContactHistory(n, p)) }
@@ -94,18 +103,59 @@ fun MainShell(vm: AppViewModel) {
 
 @Composable
 private fun GoldEntry(vm: AppViewModel, onStart: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, androidx.compose.ui.Alignment.CenterVertically)) {
-        Text("طلایی", style = MaterialTheme.typography.headlineSmall)
+    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("پیامک «بابت ${vm.defaultSenderName} فروختم/خریدم» برای یک نفر، با مبلغ و فی طلایی.")
         Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("ثبت طلایی جدید") }
     }
 }
 
 @Composable
-private fun NewRequestEntry(onStart: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, androidx.compose.ui.Alignment.CenterVertically)) {
-        Text("سلام", style = MaterialTheme.typography.headlineSmall)
-        Text("طرف‌ها و قیمت را وارد کنید تا پیامک برای همهٔ طرف‌ها از سیم‌کارت همین گوشی ارسال و در گزارش شما ثبت شود.")
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("ثبت حواله جدید") }
+private fun NewRequestEntry(
+    vm: AppViewModel,
+    onStart: () -> Unit,
+    onGold: () -> Unit,
+    onHistory: () -> Unit,
+    onOpen: (Long) -> Unit,
+) {
+    val roots by vm.roots.collectAsState()
+    val actions by vm.actions.collectAsState()
+    val recent = roots.filter { it.type == "RING" }.take(4)
+    val chains = actions.groupBy { it.rootId }
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        item {
+            Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
+                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text("سلام", style = MaterialTheme.typography.headlineSmall)
+                    Text("ثبت و پیگیری حواله‌ها و معاملات طلا", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        item { Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("ثبت حواله جدید") } }
+        item { OutlinedButton(onClick = onGold, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("ثبت طلایی جدید") } }
+        if (recent.isNotEmpty()) {
+            item {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Text("آخرین حواله‌ها", style = MaterialTheme.typography.titleMedium)
+                    TextButton(onClick = onHistory) { Text("مشاهده همه") }
+                }
+            }
+            items(recent, key = { it.id }) { root ->
+                val changes = chains[root.id].orEmpty()
+                val latest = changes.lastOrNull() ?: root
+                OutlinedCard(onClick = { onOpen(root.id) }, modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            Text(latest.transferAmount.format(), Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                            StatusTag(chainState(changes), chainColor(changes))
+                        }
+                        Text("${Jalali.fromMillis(latest.createdAt).format()}  ${Jalali.timeOf(latest.createdAt)}", style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
     }
 }
