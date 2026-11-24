@@ -16,8 +16,8 @@ object Ring {
     const val MAX_PARTIES = 10
 
     // قالب‌ها در یک جا ثابت نگه داشته شده‌اند تا راحت تغییر کنند.
-    const val RECIPIENT_TEMPLATE = "{name} از {from} بگیر بده به {to}"
-    const val SELF_TEMPLATE = "{name} از {from} گرفتم دادم به {to}"
+    const val RECIPIENT_TEMPLATE = "{name}\nاز {from} بگیر بده به {to}"
+    const val SELF_TEMPLATE = "{name}\nاز {from} گرفتم دادم به {to}"
     const val WASHERS_TEMPLATE = " با واشر {list}"
     const val AND = " و "
 
@@ -41,8 +41,8 @@ object MessageText {
     const val CANCEL_PREFIX = "\u274C\u274C کنسلی" // ❌❌
 
     /**
-     * (پیشوند اصلاحیه/کنسلی در خط اول، سپس توضیحات اگر باشد)، جمله‌ای که با نام گیرنده شروع می‌شود،
-     * یک خط خالی، مقدار حواله با واحد آن
+     * پیشوند اصلاحیه یا کنسلی، نام در خط جدا، جملهٔ حواله، یک خط خالی،
+     * توضیحات اختیاری و سپس مقدار حواله با واحد آن
      */
     fun body(kind: Kind, sentence: String, amount: TransferAmount, note: String = ""): String = buildString {
         appendPrefix(kind)

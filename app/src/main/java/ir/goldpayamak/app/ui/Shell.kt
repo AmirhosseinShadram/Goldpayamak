@@ -81,7 +81,7 @@ fun MainShell(vm: AppViewModel) {
     ) { pad ->
         Box(Modifier.padding(pad)) {
             when (tab) {
-                0 -> NewRequestEntry(vm) { push(Screen.Form(null)) }
+                0 -> NewRequestEntry { push(Screen.Form(null)) }
                 1 -> GoldEntry(vm) { push(Screen.GoldForm(null)) }
                 2 -> HistoryScreen(vm) { push(Screen.Detail(it)) }
                 3 -> ContactsScreen(vm) { n, p -> push(Screen.ContactHistory(n, p)) }
@@ -102,9 +102,9 @@ private fun GoldEntry(vm: AppViewModel, onStart: () -> Unit) {
 }
 
 @Composable
-private fun NewRequestEntry(vm: AppViewModel, onStart: () -> Unit) {
+private fun NewRequestEntry(onStart: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp, androidx.compose.ui.Alignment.CenterVertically)) {
-        Text("سلام ${vm.displayName}", style = MaterialTheme.typography.headlineSmall)
+        Text("سلام", style = MaterialTheme.typography.headlineSmall)
         Text("طرف‌ها و قیمت را وارد کنید تا پیامک برای همهٔ طرف‌ها از سیم‌کارت همین گوشی ارسال و در گزارش شما ثبت شود.")
         Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("ثبت حواله جدید") }
     }

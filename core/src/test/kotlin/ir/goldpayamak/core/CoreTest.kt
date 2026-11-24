@@ -15,24 +15,24 @@ class CoreTest {
 
     @Test fun fivePartyRingMatchesSpec() {
         val r = ring(5)
-        assertEquals("P1 از P5 بگیر بده به P2 با واشر P3 و P4", Ring.sentence(r, 0))
-        assertEquals("P2 از P1 گرفتم دادم به P3 با واشر P4 و P5", Ring.sentence(r, 1)) // خود کاربر
-        assertEquals("P3 از P2 بگیر بده به P4 با واشر P5 و P1", Ring.sentence(r, 2))
-        assertEquals("P4 از P3 بگیر بده به P5 با واشر P1 و P2", Ring.sentence(r, 3))
-        assertEquals("P5 از P4 بگیر بده به P1 با واشر P2 و P3", Ring.sentence(r, 4))
+        assertEquals("P1\nاز P5 بگیر بده به P2 با واشر P3 و P4", Ring.sentence(r, 0))
+        assertEquals("P2\nاز P1 گرفتم دادم به P3 با واشر P4 و P5", Ring.sentence(r, 1)) // خود کاربر
+        assertEquals("P3\nاز P2 بگیر بده به P4 با واشر P5 و P1", Ring.sentence(r, 2))
+        assertEquals("P4\nاز P3 بگیر بده به P5 با واشر P1 و P2", Ring.sentence(r, 3))
+        assertEquals("P5\nاز P4 بگیر بده به P1 با واشر P2 و P3", Ring.sentence(r, 4))
     }
 
     @Test fun threePartyHasNoWashers() {
         val r = ring(3)
-        assertEquals("P1 از P3 بگیر بده به P2", Ring.sentence(r, 0))
-        assertEquals("P2 از P1 گرفتم دادم به P3", Ring.sentence(r, 1))
-        assertEquals("P3 از P2 بگیر بده به P1", Ring.sentence(r, 2))
+        assertEquals("P1\nاز P3 بگیر بده به P2", Ring.sentence(r, 0))
+        assertEquals("P2\nاز P1 گرفتم دادم به P3", Ring.sentence(r, 1))
+        assertEquals("P3\nاز P2 بگیر بده به P1", Ring.sentence(r, 2))
     }
 
     @Test fun sixPartyAddsWasher() {
         val r = ring(6)
-        assertEquals("P2 از P1 گرفتم دادم به P3 با واشر P4 و P5 و P6", Ring.sentence(r, 1))
-        assertEquals("P1 از P6 بگیر بده به P2 با واشر P3 و P4 و P5", Ring.sentence(r, 0))
+        assertEquals("P2\nاز P1 گرفتم دادم به P3 با واشر P4 و P5 و P6", Ring.sentence(r, 1))
+        assertEquals("P1\nاز P6 بگیر بده به P2 با واشر P3 و P4 و P5", Ring.sentence(r, 0))
     }
 
     @Test fun bodyLayout() {
@@ -112,7 +112,7 @@ class CoreTest {
         assertTrue(cancel.text.contains("ببخشید"))
         assertTrue(plan.filter { it.kind == Kind.CORRECTION }.all { it.text.contains("ببخشید") })
         assertTrue(plan.filter { it.kind == Kind.ORIGINAL }.none { it.text.contains("ببخشید") })
-        assertTrue(cancel.text.startsWith("❌❌ کنسلی\nD از C بگیر"))
+        assertTrue(cancel.text.startsWith("❌❌ کنسلی\nD\nاز C بگیر"))
         assertTrue(cancel.text.endsWith("\n\nتوضیحات : ببخشید\n۱۰۰ تومان"))
         assertEquals(5, plan.size) // ۴ نفر جدید (شامل خود کاربر) + ۱ لغو
         assertTrue(plan.any { it.isSelf })
@@ -179,7 +179,7 @@ class TransferAmountTest {
         val gold = requireNotNull(TransferAmount.GoldGrams.parse("0.125"))
         val toman = TransferAmount.Toman(5000)
         val plan = Planner.correction(oldRing, gold, newRing, toman)
-        assertTrue(Planner.original(oldRing, gold).all { it.text.endsWith("۰٫۱۲۵ گرم طلا") })
+        assertEquals("الف\nاز ب بگیر بده به من\n\n۰٫۱۲۵ گرم طلا", Planner.original(oldRing, gold).first().text)
         assertTrue(Planner.cancel(oldRing, gold).all { it.text.endsWith("۰٫۱۲۵ گرم طلا") })
         assertTrue(plan.filter { it.party != removed }.all { it.transferAmount == toman && it.text.endsWith("۵,۰۰۰ تومان") })
         val cancellation = plan.single { it.party == removed }
