@@ -3,7 +3,10 @@
 package ir.goldpayamak.app.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.res.painterResource
+import ir.goldpayamak.app.R
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import ir.goldpayamak.core.Jalali
@@ -13,6 +16,8 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AddCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -29,18 +34,21 @@ sealed interface Screen {
     data class ContactHistory(val name: String, val phone: String) : Screen
 }
 
-private val tabs = listOf("حواله", "طلایی", "تاریخچه", "مخاطبین", "گزارش", "تنظیمات")
+private val tabs = listOf("خانه", "حواله‌ها", "طلایی", "گزارش", "بیشتر")
 private val tabIcons: List<ImageVector> = listOf(
-    Icons.Filled.AddCircle, Icons.Filled.Star, Icons.AutoMirrored.Filled.List, Icons.Filled.Person, Icons.Filled.DateRange, Icons.Filled.Settings,
+    Icons.Filled.Home, Icons.AutoMirrored.Filled.List, Icons.Filled.Star, Icons.Filled.DateRange, Icons.Filled.MoreVert,
 )
 
 @Composable
 fun MainShell(vm: AppViewModel) {
     var tab by remember { mutableIntStateOf(0) }
+    var morePage by remember { mutableStateOf<String?>(null) }
     var stack by remember { mutableStateOf(listOf<Screen>()) }
     fun push(s: Screen) { stack = stack + s }
     fun pop() { stack = stack.dropLast(1) }
     BackHandler(enabled = stack.isNotEmpty()) { pop() }
+
+    BackHandler(enabled = stack.isEmpty() && morePage != null) { morePage = null }
 
     val top = stack.lastOrNull()
     if (top != null) {
@@ -72,11 +80,20 @@ fun MainShell(vm: AppViewModel) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(if (tab == 0) "گلدپیامک" else tabs[tab]) }) },
+        topBar = {
+            TopAppBar(
+                title = { Text(morePage ?: if (tab == 0) "گلدپیامک" else tabs[tab]) },
+                navigationIcon = {
+                    if (morePage != null) IconButton(onClick = { morePage = null }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, "بازگشت")
+                    }
+                },
+            )
+        },
         bottomBar = {
             NavigationBar {
                 tabs.forEachIndexed { i, t ->
-                    NavigationBarItem(selected = tab == i, onClick = { tab = i },
+                    NavigationBarItem(selected = tab == i, onClick = { tab = i; morePage = null },
                         icon = { Icon(tabIcons[i], contentDescription = t) }, label = { Text(t, maxLines = 1, style = MaterialTheme.typography.labelSmall) })
                 }
             }
@@ -88,14 +105,24 @@ fun MainShell(vm: AppViewModel) {
                     vm = vm,
                     onStart = { push(Screen.Form(null)) },
                     onGold = { push(Screen.GoldForm(null)) },
-                    onHistory = { tab = 2 },
+                    onHistory = { tab = 1 },
                     onOpen = { push(Screen.Detail(it)) },
                 )
-                1 -> GoldEntry(vm) { push(Screen.GoldForm(null)) }
-                2 -> HistoryScreen(vm) { push(Screen.Detail(it)) }
-                3 -> ContactsScreen(vm) { n, p -> push(Screen.ContactHistory(n, p)) }
-                4 -> ReportScreen(vm)
-                else -> SettingsScreen(vm)
+                1 -> HistoryScreen(vm) { push(Screen.Detail(it)) }
+                2 -> GoldEntry(vm) { push(Screen.GoldForm(null)) }
+                3 -> ReportScreen(vm)
+                else -> when (morePage) {
+                    "مخاطبین" -> ContactsScreen(vm) { n, p -> push(Screen.ContactHistory(n, p)) }
+                    "تنظیمات" -> SettingsScreen(vm)
+                    else -> Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OutlinedCard(onClick = { morePage = "مخاطبین" }) {
+                            ListItem(headlineContent = { Text("مخاطبین") }, leadingContent = { Icon(Icons.Filled.Person, null) })
+                        }
+                        OutlinedCard(onClick = { morePage = "تنظیمات" }) {
+                            ListItem(headlineContent = { Text("تنظیمات") }, leadingContent = { Icon(Icons.Filled.Settings, null) })
+                        }
+                    }
+                }
             }
         }
     }
@@ -128,13 +155,20 @@ private fun NewRequestEntry(
     ) {
         item {
             Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
-                Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("سلام", style = MaterialTheme.typography.headlineSmall)
-                    Text("ثبت و پیگیری حواله‌ها و معاملات طلا", style = MaterialTheme.typography.bodyMedium)
+                Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("سلام", style = MaterialTheme.typography.headlineSmall)
+                        Text("به گلدپیامک خوش آمدید", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Image(painterResource(R.drawable.gold_bars), null, modifier = Modifier.width(108.dp))
                 }
             }
         }
-        item { Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("ثبت حواله جدید") } }
+        item { Button(onClick = onStart, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Icon(Icons.Filled.AddCircle, null)
+            Spacer(Modifier.width(8.dp))
+            Text("ثبت حواله جدید")
+        } }
         item { OutlinedButton(onClick = onGold, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("ثبت طلایی جدید") } }
         if (recent.isNotEmpty()) {
             item {

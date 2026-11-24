@@ -8,6 +8,7 @@ import androidx.compose.ui.graphics.Color
 import ir.goldpayamak.app.data.RequestEntity
 import androidx.compose.ui.unit.dp
 import ir.goldpayamak.app.data.MessageEntity
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -203,31 +204,52 @@ fun StatusTag(label: String, color: Color) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagePreviewDialog(plan: List<Planned>, onDismiss: () -> Unit, onSend: () -> Unit) {
     val count = Digits.toPersian(plan.count { !it.isSelf }.toString())
-    AlertDialog(
+    androidx.compose.ui.window.Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("پیش‌نمایش پیامک") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("$count پیامک از سیم‌کارت این گوشی ارسال می‌شود.", style = MaterialTheme.typography.bodySmall)
-                LazyColumn(Modifier.heightIn(max = 330.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(plan) { message ->
-                        OutlinedCard(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(
-                                    if (message.isSelf) "شما · فقط ثبت می‌شود" else message.party.phone,
-                                    style = MaterialTheme.typography.labelMedium,
-                                )
-                                Text(message.text, style = MaterialTheme.typography.bodyMedium)
-                            }
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            topBar = {
+                TopAppBar(
+                    title = { Text("پیش‌نمایش پیامک") },
+                    navigationIcon = {
+                        IconButton(onClick = onDismiss) {
+                            Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.ArrowBack, "بازگشت")
+                        }
+                    },
+                )
+            },
+            bottomBar = {
+                Surface(tonalElevation = 2.dp) {
+                    Button(onClick = onSend, modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp).heightIn(min = 48.dp)) {
+                        Text("ارسال و ثبت")
+                    }
+                }
+            },
+        ) { padding ->
+            LazyColumn(
+                Modifier.fillMaxSize().padding(padding),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                item { Text("$count پیامک از سیم‌کارت این گوشی ارسال می‌شود.", style = MaterialTheme.typography.bodySmall) }
+                items(plan) { message ->
+                    Card(
+                        Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+                    ) {
+                        Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(if (message.isSelf) "شما · فقط ثبت می‌شود" else message.party.phone, style = MaterialTheme.typography.labelMedium)
+                            Text(message.text, style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }
             }
-        },
-        confirmButton = { Button(onClick = onSend) { Text("ارسال و ثبت") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("بازگشت به فرم") } },
-    )
+        }
+    }
 }

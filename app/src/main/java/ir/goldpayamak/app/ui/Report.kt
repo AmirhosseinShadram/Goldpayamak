@@ -1,3 +1,5 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package ir.goldpayamak.app.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -48,9 +50,14 @@ fun ReportScreen(vm: AppViewModel) {
 
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         item {
-            TabRow(selectedTabIndex = typeTab) {
-                Tab(selected = typeTab == 0, onClick = { typeTab = 0 }, text = { Text("گزارش حواله") })
-                Tab(selected = typeTab == 1, onClick = { typeTab = 1 }, text = { Text("گزارش طلایی") })
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                listOf("حواله", "طلایی").forEachIndexed { index, title ->
+                    SegmentedButton(
+                        selected = typeTab == index,
+                        onClick = { typeTab = index },
+                        shape = SegmentedButtonDefaults.itemShape(index, 2),
+                    ) { Text(title) }
+                }
             }
         }
         item {
@@ -73,7 +80,7 @@ fun ReportScreen(vm: AppViewModel) {
         item {
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(enabled = valid && groups.isNotEmpty(), onClick = { exportPdf.launch("report-$fileSuffix.pdf") }) { Text("دانلود PDF") }
+                OutlinedButton(enabled = valid && groups.isNotEmpty(), onClick = { exportPdf.launch("report-$fileSuffix.pdf") }, modifier = Modifier.fillMaxWidth()) { Text("خروجی PDF") }
             }
             exportMsg?.let { Text(it) }
             if (typeTab == 0) Text("روی هر مورد بزنید تا پیامک‌های ارسال‌شده به طرف‌ها و وضعیتشان نمایش داده شود.", style = MaterialTheme.typography.bodySmall)
