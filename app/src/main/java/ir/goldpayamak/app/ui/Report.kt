@@ -112,9 +112,6 @@ private fun ReportGroupCard(g: ReportGroup) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Column(Modifier.weight(1f)) {
                             Text("${m.name}  ${m.phone}", style = MaterialTheme.typography.bodyMedium)
-                            if (r.type != "GOLD") {
-                                Text("کاربر: ${r.userName}", style = MaterialTheme.typography.bodySmall)
-                            }
                             if (r.type == "RING" && m.transferAmount != r.transferAmount) {
                                 Text(m.transferAmount.format(), style = MaterialTheme.typography.bodySmall)
                             }
