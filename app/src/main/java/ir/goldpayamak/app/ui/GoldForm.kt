@@ -37,7 +37,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     var note by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
-    var permMsg by remember { mutableStateOf<String?>(null) }
+    var showSmsPermissionHelp by remember { mutableStateOf(false) }
     var appPick by remember { mutableStateOf(false) }
     var oldData by remember { mutableStateOf<GoldData?>(null) }
     var simChoices by remember { mutableStateOf<List<Sim>?>(null) }
@@ -90,7 +90,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     }
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
         if (res[Manifest.permission.SEND_SMS] == true) sendOrAskSim()
-        else { permMsg = "برای ارسال پیامک مجوز «پیامک» لازم است."; sending = false }
+        else { showSmsPermissionHelp = true; sending = false }
     }
     fun requestSend() {
         val ok = ContextCompat.checkSelfPermission(ctx, Manifest.permission.SEND_SMS) == PackageManager.PERMISSION_GRANTED
@@ -133,10 +133,13 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth(),
             supportingText = { rate?.let { FormattedAmountHint(Price.formatToman(it)) } })
         errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        permMsg?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(onClick = { confirm = true }, enabled = plan != null && !sending, modifier = Modifier.fillMaxWidth()) {
             Text("پیش‌نمایش پیامک")
         }
+    }
+
+    if (showSmsPermissionHelp) {
+        SmsPermissionHelpDialog(onDismiss = { showSmsPermissionHelp = false })
     }
 
     if (confirm && plan != null) MessagePreviewDialog(

@@ -48,7 +48,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
     var appPickTarget by remember { mutableStateOf<Slot?>(null) }
     var confirm by remember { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
-    var permMsg by remember { mutableStateOf<String?>(null) }
+    var showSmsPermissionHelp by remember { mutableStateOf(false) }
 
     LaunchedEffect(parentId) {
         if (parentId != null) {
@@ -121,7 +121,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
 
     val permLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { res ->
         if (res[Manifest.permission.SEND_SMS] == true) sendOrAskSim()
-        else { permMsg = "برای ارسال پیامک مجوز «پیامک» لازم است."; sending = false }
+        else { showSmsPermissionHelp = true; sending = false }
     }
 
     fun requestSend() {
@@ -202,29 +202,15 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             }
         }
         if (errors.isNotEmpty()) item { errors.forEach { Text("• $it", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) } }
-        permMsg?.let { m ->
-            item {
-                Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(m, style = MaterialTheme.typography.titleSmall)
-                        Text("اگر اندروید پیام «App was denied access to SMS» نشان داد (برنامه‌هایی که با APK نصب شده‌اند):\n" +
-                            "۱) دکمهٔ زیر را بزنید تا صفحهٔ اطلاعات برنامه باز شود.\n" +
-                            "۲) بالا سمت راست سه نقطه (⋮) را بزنید و «Allow restricted settings» را انتخاب کنید.\n" +
-                            "۳) مجوزها ← پیامک (SMS) ← اجازه دادن.\n" +
-                            "۴) برگردید و دوباره ارسال کنید.", style = MaterialTheme.typography.bodySmall)
-                        Button(onClick = {
-                            ctx.startActivity(Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                android.net.Uri.fromParts("package", ctx.packageName, null)))
-                        }) { Text("باز کردن تنظیمات برنامه") }
-                    }
-                }
-            }
-        }
         item {
             Button(onClick = { confirm = true }, enabled = plan != null && !sending, modifier = Modifier.fillMaxWidth()) {
                 Text("پیش‌نمایش پیامک")
             }
         }
+    }
+
+    if (showSmsPermissionHelp) {
+        SmsPermissionHelpDialog(onDismiss = { showSmsPermissionHelp = false })
     }
 
     if (confirm && plan != null) MessagePreviewDialog(
