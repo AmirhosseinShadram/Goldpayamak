@@ -285,39 +285,3 @@ fun SupportCallButton(modifier: Modifier = Modifier) {
         )
     }
 }
-
-
-@Composable
-fun SmsPermissionHelpDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    var settingsUnavailable by remember { mutableStateOf(false) }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("مجوز پیامک لازم است") },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("در تنظیمات گلدپیامک به «مجوزها ← پیامک» بروید و «اجازه دادن» را انتخاب کنید. سپس به برنامه برگردید و ارسال را دوباره تأیید کنید.")
-                if (settingsUnavailable) {
-                    Text("از تنظیمات گوشی، «برنامه‌ها ← گلدپیامک» را باز کنید.")
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = {
-                try {
-                    context.startActivity(
-                        Intent(
-                            android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                            Uri.fromParts("package", context.packageName, null),
-                        )
-                    )
-                    onDismiss()
-                } catch (_: ActivityNotFoundException) {
-                    settingsUnavailable = true
-                }
-            }) { Text("باز کردن تنظیمات برنامه") }
-        },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("فعلاً نه") } },
-    )
-}
