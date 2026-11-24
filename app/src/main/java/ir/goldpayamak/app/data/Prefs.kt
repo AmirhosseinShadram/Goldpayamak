@@ -16,12 +16,23 @@ class Prefs(ctx: Context) {
     val senderNames: List<String>
         get() {
             val names = JSONArray(sp.getString("senderNames", "[]") ?: "[]")
-            return List(names.length()) { names.getString(it) }
+            val recent = List(names.length()) { names.getString(it) }
+            val initialName = displayName
+            return if (initialName.isNotBlank() && !sp.getBoolean("initialSenderRemoved", false)) {
+                (recent + initialName).distinct()
+            } else recent
         }
 
     fun rememberSender(name: String) {
         val names = listOf(name) + senderNames.filterNot { it == name }
         sp.edit().putString("senderNames", JSONArray(names).toString()).apply()
+    }
+
+    fun removeSender(name: String) {
+        val names = senderNames.filterNot { it == name }
+        val edit = sp.edit().putString("senderNames", JSONArray(names).toString())
+        if (name == displayName) edit.putBoolean("initialSenderRemoved", true)
+        edit.apply()
     }
 
     /** subscriptionId سیم‌کارت انتخابی؛ -1 یعنی پیش‌فرض سیستم */

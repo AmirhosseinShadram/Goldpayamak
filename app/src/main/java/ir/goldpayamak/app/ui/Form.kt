@@ -149,7 +149,7 @@ fun FormScreen(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("طرف ۲ (شما)", style = MaterialTheme.typography.titleSmall)
-                        SenderNameField(senderName, { senderName = it }, vm.senderNames)
+                        SenderNameField(senderName, { senderName = it }, vm.senderNames, vm::removeSender)
                     }
                 }
             } else {

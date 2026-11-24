@@ -108,7 +108,7 @@ fun GoldForm(vm: AppViewModel, parentId: Long?, onDone: (Long) -> Unit) {
             Text("فقط یک پیام اصلاحیه برای گیرندهٔ زیر فرستاده می‌شود. اگر گیرنده را عوض کنید، به گیرندهٔ قبلی پیامی نمی‌رود.", style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(note, { note = it }, label = { Text("توضیحات اصلاحیه (در پیامک هم می‌رود)") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
         }
-        SenderNameField(senderName, { senderName = it }, vm.senderNames)
+        SenderNameField(senderName, { senderName = it }, vm.senderNames, vm::removeSender)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             GoldSide.entries.forEach { s ->
                 FilterChip(selected = side == s, onClick = { side = s }, label = { Text(s.word) })

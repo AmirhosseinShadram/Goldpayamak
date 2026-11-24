@@ -128,7 +128,12 @@ fun ActionDialog(a: RequestEntity, msgs: List<MessageEntity>, onDismiss: () -> U
 }
 
 @Composable
-fun SenderNameField(name: String, onNameChange: (String) -> Unit, names: List<String>) {
+fun SenderNameField(
+    name: String,
+    onNameChange: (String) -> Unit,
+    names: List<String>,
+    onRemove: (String) -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     Column {
         OutlinedTextField(
@@ -143,10 +148,20 @@ fun SenderNameField(name: String, onNameChange: (String) -> Unit, names: List<St
                 TextButton(onClick = { expanded = true }) { Text("انتخاب از نام‌های قبلی") }
                 DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
                     names.forEach { previous ->
-                        DropdownMenuItem(text = { Text(previous) }, onClick = {
-                            onNameChange(previous)
-                            expanded = false
-                        })
+                        Row(Modifier.width(240.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                            DropdownMenuItem(
+                                text = { Text(previous) },
+                                onClick = {
+                                    onNameChange(previous)
+                                    expanded = false
+                                },
+                                modifier = Modifier.weight(1f),
+                            )
+                            TextButton(onClick = {
+                                onRemove(previous)
+                                if (names.size == 1) expanded = false
+                            }) { Text("حذف", color = MaterialTheme.colorScheme.error) }
+                        }
                     }
                 }
             }

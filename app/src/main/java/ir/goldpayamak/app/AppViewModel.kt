@@ -23,8 +23,8 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     var isActivated by mutableStateOf(prefs.isActivated)
     var displayName by mutableStateOf(prefs.displayName)
-    private var recentSenderNames by mutableStateOf(prefs.senderNames)
-    val senderNames: List<String> get() = (recentSenderNames + displayName).filter { it.isNotBlank() }.distinct()
+    var senderNames by mutableStateOf(prefs.senderNames)
+        private set
     val defaultSenderName: String get() = senderNames.firstOrNull().orEmpty()
 
     val contacts = dao.contacts().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -56,6 +56,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
     fun activateDemo(name: String) {
         prefs.markActivated(name)
         displayName = prefs.displayName
+        senderNames = prefs.senderNames
         isActivated = true
     }
 
@@ -67,6 +68,7 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
             if (r is ActivationResult.Ok) {
                 prefs.markActivated(name)
                 displayName = prefs.displayName
+                senderNames = prefs.senderNames
                 isActivated = true
             }
             activating = false
@@ -107,7 +109,12 @@ class AppViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun rememberSender(name: String) {
         prefs.rememberSender(name)
-        recentSenderNames = prefs.senderNames
+        senderNames = prefs.senderNames
+    }
+
+    fun removeSender(name: String) {
+        prefs.removeSender(name)
+        senderNames = prefs.senderNames
     }
 
     /** حذف همهٔ مخاطبین، درخواست‌ها و پیام‌ها (فعال‌سازی و نام باقی می‌ماند) */
