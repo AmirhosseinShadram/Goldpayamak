@@ -80,6 +80,12 @@ fun SettingsScreen(vm: AppViewModel) {
         clearedMsg?.let { Text(it) }
         Text("توجه: گوشی باید روشن و برنامه باز باشد تا ارسال کامل شود. پیامک فارسی در هر بخش ۷۰ کاراکتر است و پیام طولانی چندبخشی حساب می‌شود.",
             style = MaterialTheme.typography.bodySmall)
+        HorizontalDivider()
+        Text("ساخته شده توسط گروه پارسازرین", style = MaterialTheme.typography.titleSmall)
+        Text(
+            "برای ساخت اپ اختصاصی برای شما با شماره \u206609123399729\u2069 تماس حاصل بفرمایید",
+            style = MaterialTheme.typography.bodyMedium,
+        )
     }
 
     if (confirmClear) AlertDialog(
