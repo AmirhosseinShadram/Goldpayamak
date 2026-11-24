@@ -20,38 +20,54 @@ import ir.goldpayamak.core.Jalali
 import ir.goldpayamak.core.Phone
 
 @Composable
-fun HistoryScreen(vm: AppViewModel, onOpen: (Long) -> Unit) {
+fun HistoryScreen(
+    vm: AppViewModel,
+    isGold: Boolean,
+    onOpen: (Long) -> Unit,
+    onStart: (() -> Unit)? = null,
+) {
     val roots by vm.roots.collectAsState()
     val actions by vm.actions.collectAsState()
-    val selfs by vm.selfMessages.collectAsState()
-    val golds by vm.goldMessages.collectAsState()
-    val msgsByReq = remember(selfs, golds) { (selfs + golds).groupBy { it.requestId } }
+    val messages by (if (isGold) vm.goldMessages else vm.selfMessages).collectAsState()
+    val messagesByRequest = remember(messages) { messages.groupBy { it.requestId } }
     val actionsByRoot = remember(actions) { actions.groupBy { it.rootId } }
-    var tab by remember { mutableIntStateOf(0) } // 0 = حواله، 1 = طلایی
-    val type = if (tab == 0) "RING" else "GOLD"
-    val list = remember(roots, type) { roots.filter { it.type == type } }
+    val type = if (isGold) "GOLD" else "RING"
+    val history = remember(roots, type) { roots.filter { it.type == type } }
 
-    Column(Modifier.fillMaxSize()) {
-        TabRow(selectedTabIndex = tab) {
-            Tab(selected = tab == 0, onClick = { tab = 0 }, text = { Text("حواله") })
-            Tab(selected = tab == 1, onClick = { tab = 1 }, text = { Text("طلایی") })
+    LazyColumn(
+        Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (onStart != null) item {
+            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("ثبت طلایی جدید") }
         }
-        if (list.isEmpty()) { EmptyHint(if (tab == 0) "هنوز حواله‌ای ثبت نشده است." else "هنوز طلایی‌ای ثبت نشده است."); return@Column }
-        LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(list, key = { it.id }) { r ->
-                val acts = actionsByRoot[r.id].orEmpty()
-                OutlinedCard(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Column(Modifier.fillMaxWidth().clickable { onOpen(r.id) }, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                Text("${Jalali.fromMillis(r.createdAt).format()}  ${Jalali.timeOf(r.createdAt)}", style = MaterialTheme.typography.labelMedium)
-                                StatusTag(chainState(acts), chainColor(acts))
-                            }
-                            Text(r.transferAmount.format(), style = MaterialTheme.typography.titleMedium)
-                            // فقط پیام اول؛ با زدن روی آن می‌شود اصلاحیه یا کنسلی کرد
-                            Text(plain(mainMessage(r, msgsByReq[r.id])?.text ?: "—"), style = MaterialTheme.typography.bodyMedium)
-                        }
+        if (isGold && history.isNotEmpty()) item {
+            Text("آخرین طلایی‌ها", Modifier.padding(vertical = 6.dp), style = MaterialTheme.typography.titleMedium)
+        }
+        if (history.isEmpty()) item {
+            Text(
+                if (isGold) "هنوز طلایی‌ای ثبت نشده است." else "هنوز حواله‌ای ثبت نشده است.",
+                Modifier.padding(vertical = 12.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        items(history, key = { it.id }) { request ->
+            val changes = actionsByRoot[request.id].orEmpty()
+            OutlinedCard(onClick = { onOpen(request.id) }, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                    ) {
+                        Text("${Jalali.fromMillis(request.createdAt).format()}  ${Jalali.timeOf(request.createdAt)}", style = MaterialTheme.typography.labelMedium)
+                        StatusTag(chainState(changes), chainColor(changes))
                     }
+                    Text(
+                        plain(mainMessage(request, messagesByRequest[request.id])?.text ?: "—"),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
                 }
             }
         }

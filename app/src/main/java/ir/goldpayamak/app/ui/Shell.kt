@@ -13,23 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import ir.goldpayamak.app.data.RequestEntity
-import ir.goldpayamak.app.data.Status
-import ir.goldpayamak.app.statusLabel
-import java.time.LocalDate
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.res.painterResource
 import ir.goldpayamak.app.R
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import ir.goldpayamak.core.Jalali
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.outlined.Home
@@ -120,14 +110,16 @@ fun MainShell(vm: AppViewModel) {
         Box(Modifier.padding(pad)) {
             when (tab) {
                 0 -> NewRequestEntry(
-                    vm = vm,
                     onStart = { push(Screen.Form(null)) },
                     onGold = { push(Screen.GoldForm(null)) },
-                    onHistory = { tab = 1 },
-                    onOpen = { push(Screen.Detail(it)) },
                 )
-                1 -> HistoryScreen(vm) { push(Screen.Detail(it)) }
-                2 -> GoldEntry(vm) { push(Screen.GoldForm(null)) }
+                1 -> HistoryScreen(vm, isGold = false, onOpen = { push(Screen.Detail(it)) })
+                2 -> HistoryScreen(
+                    vm,
+                    isGold = true,
+                    onOpen = { push(Screen.Detail(it)) },
+                    onStart = { push(Screen.GoldForm(null)) },
+                )
                 3 -> ReportScreen(vm)
                 else -> when (morePage) {
                     "مخاطبین" -> ContactsScreen(vm) { n, p -> push(Screen.ContactHistory(n, p)) }
@@ -143,14 +135,6 @@ fun MainShell(vm: AppViewModel) {
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun GoldEntry(vm: AppViewModel, onStart: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("پیامک «بابت ${vm.defaultSenderName} فروختم/خریدم» برای یک نفر، با مبلغ و فی طلایی.")
-        Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("ثبت طلایی جدید") }
     }
 }
 
@@ -198,16 +182,9 @@ private fun HomeNavigation(selected: Int, onSelect: (Int) -> Unit) {
 
 @Composable
 private fun NewRequestEntry(
-    vm: AppViewModel,
     onStart: () -> Unit,
     onGold: () -> Unit,
-    onHistory: () -> Unit,
-    onOpen: (Long) -> Unit,
 ) {
-    val roots by vm.roots.collectAsState()
-    val actions by vm.actions.collectAsState()
-    val recent = roots.filter { it.type == "RING" }.take(3)
-    val chains = actions.groupBy { it.rootId }
     val actionShape = RoundedCornerShape(14.dp)
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -248,70 +225,6 @@ private fun NewRequestEntry(
                 Icon(painterResource(R.drawable.ic_gold_trade), null)
                 Spacer(Modifier.width(10.dp))
                 Text("ثبت طلایی", color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-            }
-        }
-        item {
-            Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.List, null)
-                    Text("آخرین حواله‌ها", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                }
-                TextButton(onClick = onHistory) { Text("مشاهده همه ‹") }
-            }
-        }
-        if (recent.isEmpty()) item {
-            Text("هنوز حواله‌ای ثبت نشده است.", Modifier.padding(horizontal = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        items(recent, key = { it.id }) { root ->
-            val latest = chains[root.id]?.lastOrNull() ?: root
-            HomeTransferCard(vm, root.id, latest) { onOpen(root.id) }
-        }
-    }
-}
-
-@Composable
-private fun HomeTransferCard(vm: AppViewModel, rootId: Long, latest: RequestEntity, onOpen: () -> Unit) {
-    val messages by remember(rootId) { vm.dao.messagesOfRoot(rootId) }.collectAsState(initial = emptyList())
-    val recipients = messages.filter { it.requestId == latest.id && it.status != Status.SELF }
-    val activeRecipients = if (latest.kind == "CORRECTION") recipients.filter { it.kind != "CANCEL" } else recipients
-    val status = when {
-        latest.kind == "CANCEL" -> Status.REQ_CANCELLED
-        recipients.any { it.status == Status.FAILED } -> Status.FAILED
-        recipients.any { it.status == Status.SENDING } -> Status.SENDING
-        recipients.any { it.status == Status.PENDING } -> Status.PENDING
-        recipients.isNotEmpty() && recipients.all { it.status == Status.DELIVERED } -> Status.DELIVERED
-        recipients.isNotEmpty() && recipients.all { it.status == Status.SENT || it.status == Status.DELIVERED } -> Status.SENT
-        else -> Status.REQ_RECORD
-    }
-    val color = if (status == Status.DELIVERED) Color(0xFF246B3C) else statusColor(status)
-    val today = LocalDate.now(Jalali.TEHRAN)
-    val day = Jalali.fromMillis(latest.createdAt)
-    val date = when (day) {
-        Jalali.fromLocalDate(today) -> "امروز"
-        Jalali.fromLocalDate(today.minusDays(1)) -> "دیروز"
-        else -> day.format()
-    }
-    OutlinedCard(onClick = onOpen, modifier = Modifier.fillMaxWidth(), colors = CardDefaults.outlinedCardColors(containerColor = Color(0xFFFCFAF5))) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 70.dp).padding(horizontal = 10.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, Modifier.size(14.dp))
-            Icon(Icons.Filled.Person, null, Modifier.size(18.dp))
-            Text(activeRecipients.firstOrNull()?.name.orEmpty(), Modifier.weight(0.85f), style = MaterialTheme.typography.bodyMedium,
-                maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Column(Modifier.weight(1.45f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(latest.transferAmount.format(), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
-                Text("$date ${Jalali.timeOf(latest.createdAt)}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Surface(color = color.copy(alpha = 0.12f), contentColor = color, shape = RoundedCornerShape(9.dp)) {
-                Row(Modifier.padding(horizontal = 7.dp, vertical = 5.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-                    if (status == Status.DELIVERED || status == Status.FAILED) {
-                        Icon(if (status == Status.DELIVERED) Icons.Filled.Check else Icons.Filled.Close, null, Modifier.size(14.dp))
-                    }
-                    Text(statusLabel(status), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                }
             }
         }
     }
