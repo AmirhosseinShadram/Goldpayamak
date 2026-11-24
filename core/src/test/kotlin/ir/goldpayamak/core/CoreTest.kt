@@ -153,6 +153,15 @@ class CoreTest {
         assertTrue(Gold.validate(a).isEmpty())
     }
 
+    @Test fun historySearchNormalizesAmountsAcrossKeyboards() {
+        listOf("101000000", "101,000,000", "۱۰۱٬۰۰۰٬۰۰۰", "١٠١،٠٠٠،٠٠٠", "101 000 000", "101 000 000", "⁦101000000⁩").forEach {
+            assertEquals("101000000", TextNorm.history(it))
+        }
+        assertEquals("12.035", TextNorm.history("۱۲٫۰۳۵"))
+        assertEquals("12.035", TextNorm.history("12.035"))
+        assertEquals("علی اکبری", TextNorm.history("علي اكبري"))
+    }
+
     @Test fun searchNormalize() {
         assertEquals("علی ۱", TextNorm.fa("علي ١").replace("1", "۱"))
         assertEquals("0912", TextNorm.fa("۰۹۱۲"))

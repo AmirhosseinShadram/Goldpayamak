@@ -35,11 +35,15 @@ fun HistoryScreen(
     val actionsByRoot = remember(actions) { actions.groupBy { it.rootId } }
     val type = if (isGold) "GOLD" else "RING"
     var search by rememberSaveable(isGold) { mutableStateOf("") }
-    val query = normalizeHistorySearch(search)
+    val query = TextNorm.history(search)
     val entries by remember(type) { vm.dao.historySearchEntries(type) }.collectAsState(initial = emptyList())
     val matches = remember(entries, query) {
         if (query.isBlank()) emptySet() else entries.asSequence()
-            .filter { entry -> listOf(entry.name, entry.phone, entry.text).any { normalizeHistorySearch(it).contains(query) } }
+            .filter { entry ->
+                val amount = entry.goldGrams ?: entry.price.toString()
+                listOfNotNull(entry.name, entry.phone, entry.text, amount, entry.rate?.toString())
+                    .any { TextNorm.history(it).contains(query) }
+            }
             .map { it.rootId }.toSet()
     }
     val history = remember(roots, type, query, matches) {
@@ -98,9 +102,6 @@ fun HistoryScreen(
         }
     }
 }
-
-private fun normalizeHistorySearch(value: String) =
-    TextNorm.fa(value).replace(",", "").replace("٬", "").replace('٫', '.')
 
 @Composable
 fun DetailScreen(vm: AppViewModel, id: Long, onCorrect: (Long, Boolean) -> Unit, onOpen: (Long) -> Unit) {

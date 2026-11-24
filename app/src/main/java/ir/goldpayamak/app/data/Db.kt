@@ -82,7 +82,15 @@ data class MessageEntity(
         get() = goldGrams?.let { requireNotNull(TransferAmount.GoldGrams.parse(it)) } ?: TransferAmount.Toman(price)
 }
 
-data class HistorySearchEntry(val rootId: Long, val name: String, val phone: String, val text: String)
+data class HistorySearchEntry(
+    val rootId: Long,
+    val name: String,
+    val phone: String,
+    val text: String,
+    val price: Long,
+    val goldGrams: String?,
+    val rate: Long?,
+)
 
 @Dao
 interface AppDao {
@@ -172,7 +180,8 @@ interface AppDao {
     fun messagesOfRoot(rootId: Long): Flow<List<MessageEntity>>
 
     @Query("""
-        SELECT r.rootId, m.name, m.phone, m.text
+        SELECT r.rootId, m.name, m.phone, m.text, m.price, m.goldGrams,
+            CASE WHEN r.type = 'GOLD' THEN r.rate END AS rate
         FROM messages m JOIN requests r ON r.id = m.requestId
         WHERE r.type = :type
     """)

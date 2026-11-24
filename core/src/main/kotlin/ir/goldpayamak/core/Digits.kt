@@ -56,6 +56,12 @@ object Phone {
 }
 
 object TextNorm {
+    private val directionMarks = Regex("[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]")
+    private val thousandsSeparators = Regex("(?<=[0-9])[,٬، \u00A0\u202F]+(?=[0-9])")
+
+    fun history(value: String): String =
+        fa(value).replace(directionMarks, "").replace(thousandsSeparators, "").replace('٫', '.').trim()
+
     /** برای جستجو: ی/ک عربی به فارسی، ارقام به لاتین، حروف کوچک */
     fun fa(s: String): String = Digits.toLatin(s).replace('\u064A', '\u06CC').replace('\u0643', '\u06A9').lowercase().trim()
 }
